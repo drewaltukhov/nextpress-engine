@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="development_docs/branding/nextpress-logo.svg" alt="NextPress" width="360">
+  <img src="assets/nextpress-logo.svg" alt="NextPress" width="360">
 </p>
 
 <p align="center">
@@ -68,10 +68,10 @@ The shape is familiar. The implementation is modern.
 
 In active development by [Drew](https://github.com/drewaltukhov). v1 is being built engine-first — the data layer, security, and SEO foundations land before any user-facing admin screens.
 
-Curious about the design? Start at [`development_docs/`](./development_docs/README.md). For user-facing help, see [`docs/`](./docs/).
+For user-facing help, see [`docs/`](./docs/).
 
 ---
 
 <p align="center">
-  <img src="development_docs/branding/nextpress-mark.svg" alt="" width="32">
+  <img src="assets/nextpress-mark.svg" alt="" width="32">
 </p>

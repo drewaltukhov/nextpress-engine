@@ -3,11 +3,18 @@ import { db } from "@core/db/instance";
 import { handleNewspaperPostsRequest } from "@/app/api/widgets/newspaper/posts/handler";
 
 async function fixtureTopic(slug: string): Promise<number | null> {
-  const r = await db().execute({
-    sql: "SELECT id FROM topics WHERE tenant_id = 1 AND slug = ? LIMIT 1",
-    args: [slug],
-  });
-  return r.rows[0] ? Number(r.rows[0].id) : null;
+  try {
+    const r = await db().execute({
+      sql: "SELECT id FROM topics WHERE tenant_id = 1 AND slug = ? LIMIT 1",
+      args: [slug],
+    });
+    return r.rows[0] ? Number(r.rows[0].id) : null;
+  } catch {
+    // No schema available (e.g. the code-only public mirror has no committed
+    // dev.db) — treat as "seed absent" so these integration tests skip rather
+    // than hard-failing on `no such table: topics`.
+    return null;
+  }
 }
 
 let seedPresent = false;
