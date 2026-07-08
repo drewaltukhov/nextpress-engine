@@ -1,0 +1,59 @@
+---
+title: IP Blocking
+description: Automatic and manual IP blocking with CIDR allowlists.
+---
+
+## Auto-blocking
+
+NextPress automatically blocks IPs that generate too many failed login attempts:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| IP failure threshold | **20** | Failed attempts from one IP before auto-block |
+| IP failure window | **30 minutes** | Sliding window for counting failures |
+| IP lockout duration | **60 minutes** | How long the IP stays blocked |
+
+Auto-blocking counts failures **across all accounts** — so an attacker spraying passwords against many emails from one IP will get caught even if no single account locks out.
+
+## Allow list
+
+IPs matching a CIDR range in the allow list are **never blocked**, even if they exceed the failure threshold. Use this for:
+
+- Office networks
+- VPN exit IPs
+- CI/CD servers
+- Trusted partner IPs
+
+Allow list entries use CIDR notation:
+
+```
+10.0.0.0/8         — entire private network
+203.0.113.42/32     — single host
+192.168.1.0/24      — /24 subnet
+```
+
+## Manual blocking
+
+Admins can manually block specific IPs through the Security admin screen:
+
+- **Permanent blocks** — no expiration, persists until manually removed
+- **Timed blocks** — auto-expire after a set duration
+- **Reason tracking** — each block records why it was created
+
+## Blocked request behavior
+
+Requests from blocked IPs receive:
+
+```http
+HTTP/1.1 403 Forbidden
+
+{
+  "error": "Your IP address has been blocked. Contact the site administrator if you believe this is a mistake."
+}
+```
+
+The response is intentionally generic — no information about why the block exists or when it expires.
+
+## Allow list priority
+
+The allow list **always takes priority** over the block list. If an IP matches both an allow CIDR and a block entry, it's allowed through. This prevents accidental self-lockout from office networks.

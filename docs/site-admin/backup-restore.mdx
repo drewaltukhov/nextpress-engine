@@ -1,0 +1,82 @@
+---
+title: Backup, Restore & Reset
+description: Download a copy of your site's data, restore from a backup file, or wipe the site back to first-run state.
+---
+
+NextPress ships three sibling features under **Admin → System**:
+
+| Page | What it does |
+|------|-------------|
+| `/admin/backup` | Create a `.npbackup` archive of every database table, plus a separate ZIP of every uploaded media file. Restore from a backup file. |
+| `/admin/reset` | Wipe the site back to first-run state, password-confirmed. |
+
+All three are admin-only and re-confirm the user's password via step-up auth before doing anything destructive.
+
+## Create Backup
+
+The **Create Backup** card on `/admin/backup` produces a single `.npbackup` ZIP containing:
+
+- Every table in the database **except** `media` (see Backup Media below) and `migration_lock` (ephemeral runner state)
+- A `manifest.json` at the archive root with the engine version, per-table row counts, total row count, and a SHA-256 checksum of the data
+- Activity log tables (`system_log`, `failed_jobs`, `failed_logins`, `plugin_failures`) **only** when the *Include activity logs* checkbox is on. The audit log is always included.
+
+Tables are discovered dynamically from `sqlite_master` at backup time, so any future table — core, core-plugin, or third-party plugin — is automatically picked up. The only opt-outs are `media` and `migration_lock`.
+
+The archive is streamed to the browser as a download. Nothing is persisted server-side; if you lose the file, it's gone.
+
+## Backup Media
+
+Sits beside Create Backup in a 2-column grid. Streams every media file stored in the database (rows with `storage_backend = 'db'`) into a separate `nextpress-media-….zip`:
+
+- Each file is keyed by `<id>-<safeFilename>` to avoid collisions
+- A `manifest.json` maps id → archive path + filename + mime + size + uploaded date
+- Plugin-storage backends (future media plugins) are skipped and reported in the manifest
+- The card header shows the current file count and total bytes before you click
+
+Keep the two archives in sync if you intend to restore: the `.npbackup` carries everything *but* media, the media ZIP carries the file blobs.
+
+## Restore
+
+Upload an existing `.npbackup` file via the **Restore** card. NextPress will:
+
+1. Parse the manifest, validate version compatibility, and show a preview
+2. Re-confirm your password (step-up auth)
+3. Run a single transaction with `PRAGMA defer_foreign_keys = ON` so insert order doesn't matter and FK violations are only checked at COMMIT
+4. Replace every table's contents with the backup's rows
+
+The importer skips `media` and `migration_lock` even if they're present in older archives — old media rows whose blobs are long gone shouldn't silently overwrite the live media table.
+
+Restoring across major engine versions may surface schema differences. The manifest's recorded version is now sourced from `package.json`, so the version banner you see during preview is the version that actually wrote the file.
+
+## Reset
+
+`/admin/reset` is a destructive button. The use case is iterating on a Vercel preview deployment without shell access — a one-click way to put the site back into the setup-wizard state.
+
+**Three layers of guard before anything happens:**
+
+1. Admin role check (the route itself is in `ADMIN_ONLY_ROUTE_PREFIXES`)
+2. Step-up password re-auth
+3. The caller must literally type `RESET` (capitals) into a confirmation field, plus tick an acknowledgement checkbox before the red button enables
+
+The page also nudges you to take a backup first and links straight to `/admin/backup`.
+
+**What gets wiped:**
+
+- All user accounts, role assignments, credentials, OAuth links, email-change/verify tokens, active sessions, failed-login records
+- Every uploaded media file
+- Redirects, API tokens, allow/block IP lists
+- Audit log, system log, plugin-failure records, failed-job entries
+- Backup metadata rows
+- SMTP credentials and the wizard-set `site.title`/`site.tagline`/`site.url`/`site.timezone`
+- `system.setup_complete` flips to `false`
+
+**What stays put:**
+
+- Schema (migrations remain applied)
+- Role definitions, reserved slugs, plugin registry, and all seeded plugin defaults
+
+After the wipe the action returns ok and the client hard-navigates to `/api/admin/reset/finish`, a route handler that clears the setup cookie + every Auth.js session-cookie variant on a `NextResponse.redirect` to `/admin/setup`. The proxy then sees a fresh first-run state and the wizard kicks back in cleanly.
+
+> The cookie cleanup intentionally lives in a separate route handler. Server actions can't reliably attach `Set-Cookie` to their response, which would otherwise leave a stale JWT in the browser and trip an `ERR_TOO_MANY_REDIRECTS` loop on the next request.
+
+If you're recovering from a previous version that had a stuck redirect loop, manually clearing `__np_setup` and `authjs.session-token*` cookies in DevTools → Application → Cookies will get you back to the wizard.

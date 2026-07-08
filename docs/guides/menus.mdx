@@ -1,0 +1,139 @@
+---
+title: Menus
+description: Build the site navigation — top nav, footer links, sidebar lists.
+---
+
+A **menu** is a named list of links that themes can drop into header, footer, or sidebar slots. Menus are theme-agnostic — you build them in the admin and the theme decides where they appear.
+
+## How menus work
+
+In NextPress, menus are first-class content. Each menu has:
+
+- A **name** (for your reference; not shown on the public site).
+- A **menu style** that controls how the public render behaves — top-level only, dropdowns, or [mega menu](/docs/guides/mega-menu).
+- An optional **location** label. The Nav Menu widget can look menus up by location (`primary`, `footer`, etc.) instead of being pointed at a specific menu manually.
+- A list of **items** — links with labels.
+
+Items can be nested (parent / child) for dropdown menus. There's no hard depth limit, but most themes only style the first two levels.
+
+Themes display menus via the **Nav Menu** widget. Each widget instance can show a different menu in a different theme slot (e.g. one in the header, another in the footer).
+
+## Reserved system menus
+
+Two menus are seeded automatically on first-boot and cannot be deleted:
+
+- **Primary** (`location: primary`) — the default theme renders this in the header.
+- **Footer** (`location: footer`) — rendered in the footer.
+
+You'll see them pinned to the top of the menus list with a subtle green highlight; the trash icon is shown but disabled. Their **location** field is also locked in the editor — themes look them up by that exact location string, so renaming would orphan the theme reference. Their **name**, **style**, and **items** stay fully editable.
+
+## Creating a menu
+
+1. **Menus → All menus** in the admin sidebar.
+2. **Add menu**.
+3. Name it (e.g. "Resources").
+4. Save.
+
+You land in the menu editor with an empty list. The slug is auto-derived from the name; the location stays empty by default — set one later only if you want a theme to look this menu up by location instead of pointing at it manually.
+
+## Menu style
+
+Under **Menu details**, each menu picks one of three render styles:
+
+| Style | Behavior |
+| --- | --- |
+| **Top level only** | Show only root items; children are hidden. No chevrons, no submenus. Useful for footer link rows. |
+| **Dropdowns** | Show roots + a submenu panel on hover/focus. The default for new menus. |
+| **Mega menu** | Each top-level item can carry a rich panel with featured posts, image grids, link columns, etc. See [Mega menus](/docs/guides/mega-menu) for the full layout reference. |
+
+Switching between styles is non-destructive — for example, flipping a mega menu to **Dropdowns** hides any saved panels without deleting them. Flip back to restore.
+
+The Footer menu's picker hides the **Mega menu** option (panels need horizontal real estate the footer doesn't have).
+
+## Adding items
+
+Three item types — pick from **Add item → \<type\>**:
+
+| Type | What it links to |
+| --- | --- |
+| **Custom link** | An arbitrary URL. Used for external links or special pages. |
+| **Page** | An internal page from the picker. Label and URL fill in automatically. |
+| **Post** | An internal post from the picker. Label and URL fill in automatically. |
+| **Topic** | A topic archive (`/topics/<slug>`). |
+| **Pillar** | A pillar post. |
+
+The internal types track their target: if you rename a page, the menu item's URL updates automatically. If you delete the target, the menu item is hidden until you fix it (no broken links).
+
+Each item has these editable fields:
+
+| Field | Notes |
+| --- | --- |
+| **Label** | Display text. Defaults to the target's title; override for short labels (e.g. "Home" for a page titled "Welcome to Acme"). |
+| **URL** | Auto-set for internal items. Editable for custom links. |
+| **Target** | Same tab (default) or new tab. |
+| **CSS class** | Optional. Lets your theme style this item differently from siblings. |
+| **Visibility** | "Always" / "Signed-in only" / "Anonymous only". Useful for "Sign in" links that flip to "Sign out" when authenticated. |
+
+## Nesting items
+
+Drag an item onto another item to nest it. The drop indicator shows whether you're nesting (right of the row) or re-ordering (above/below).
+
+Themes that support dropdown menus render nested items as a flyout submenu. Themes that don't (a footer "Quick links" column, for instance) render only the top level.
+
+## Re-ordering
+
+Drag and drop. Order is saved automatically — no "Save" click required between drags.
+
+## Saving and publishing
+
+Menus auto-save on every change. There's no draft vs. published state — every edit goes live immediately. That's deliberate: menus are structural, not editorial, and the simpler model is less footgun-prone.
+
+If you need to stage menu changes, build a parallel menu (e.g. `main-nav-staging`) and switch the theme's Nav Menu widget to point at it.
+
+## Connecting a menu to your theme
+
+By default the `nextpresso` theme expects a menu with slug `main-nav` in the header. To use a different menu:
+
+1. **Themes → \<your theme\> → Open builder**.
+2. Click into the header zone.
+3. Click the **Nav Menu** widget.
+4. In the right rail, pick a different menu from the **Menu** dropdown.
+5. Save.
+
+The dropdown lists every menu in the system. You can have one menu in the header, a different one in the footer, and another in a sidebar — each Nav Menu widget instance picks independently.
+
+## Multiple menus
+
+You're not limited to one menu per slot. A common pattern:
+
+| Menu | Where it lives | Typical items |
+| --- | --- | --- |
+| `main-nav` | Header | Home, Topics, About |
+| `footer-quick` | Footer left column | Privacy, Terms, Contact |
+| `footer-social` | Footer right column | Twitter, LinkedIn, RSS |
+| `sidebar-about` | Sidebar of /about | Bio, Press, Speaking |
+
+Build each as a separate menu, then drop a Nav Menu widget into the relevant theme slot and point it at the matching slug.
+
+## Deleting a menu
+
+From the menus list, click the trash icon. NextPress warns if any Nav Menu widget is currently pointing at the menu — deleting it will leave the widget showing "Menu not found" until you reassign or remove it.
+
+The reserved **Primary** and **Footer** menus can't be deleted — the trash icon is shaded and disabled for those rows. Empty them or hide their items, but the menu rows themselves stay so themes can rely on the locations existing.
+
+## Item visibility rules
+
+The **Visibility** field on each item is honored at render time:
+
+- **Always** (default) — the item shows for everyone.
+- **Signed-in only** — only authenticated users see it. Useful for "My account", "Sign out".
+- **Anonymous only** — only un-authenticated visitors see it. Useful for "Sign in", "Register".
+
+The visibility check happens server-side, so the rendered HTML differs between signed-in and signed-out requests (no flash-of-wrong-menu).
+
+## Tips
+
+- **Keep top-level items short.** Five top-level entries is a sweet spot — beyond that, the header gets crowded and mobile hamburger menus get long.
+- **Use the Page/Post/Topic types over custom links.** They survive renames; custom links go stale silently.
+- **For complex sections, use a [mega menu](/docs/guides/mega-menu).** Two levels deep (parent + dropdown) is the practical max for plain dropdown navigation. Beyond that, switch the menu's style to Mega menu and use the layout templates instead.
+- **Don't overuse the Location field.** It's only there for menus you want themes to look up by name (`primary`, `footer`). Most user-created menus stay locationless and get pointed at directly from the Nav Menu widget.

@@ -1,0 +1,5 @@
+{
+  "title": "Site admin",
+  "description": "SEO, redirects, backups — the tasks every site owner runs.",
+  "pages": ["index", "seo", "redirects", "backup-restore"]
+}

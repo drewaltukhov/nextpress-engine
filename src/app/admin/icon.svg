@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="NextPress mark">
+  <title>NextPress mark</title>
+  <g transform="translate(94.67,28) scale(1.389)">
+    <g transform="translate(0,144) scale(0.1,-0.1)" fill="#2B944F" stroke="none">
+      <path d="M2 1373 l3 -68 49 -6 c57 -6 106 -50 107 -97 0 -15 2 -94 4 -177 4 -190 31 -260 117 -299 11 -5 11 -7 0 -12 -90 -41 -113 -107 -116 -324 -3 -211 -20 -250 -110 -250 -50 0 -56 -8 -56 -77 l0 -66 79 6 c85 5 135 24 177 65 54 54 58 73 64 282 7 244 23 280 123 297 l37 6 0 67 0 67 -41 7 c-95 15 -119 76 -119 297 0 267 -64 349 -271 349 l-50 0 3 -67z"/>
+    </g>
+  </g>
+</svg>

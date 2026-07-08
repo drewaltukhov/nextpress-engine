@@ -1,0 +1,27 @@
+---
+title: Developer
+description: Plugin architecture, REST API, hooks, and the deep-dive material for engineers extending NextPress.
+---
+
+This section is for engineers — the rest of the docs cover running a site without ever opening a code editor. Here you'll find the contract every plugin follows, the REST API, and the configuration knobs that aren't surfaced through the admin UI.
+
+If you're trying to **publish** rather than **extend**, jump to the user-facing sections instead:
+
+- [Guides](/docs/guides) — pages, posts, topics, menus, media
+- [Themes](/docs/themes) — picking, activating, and customizing a theme
+- [Site admin](/docs/site-admin) — SEO, redirects, backups
+- [Security](/docs/security) — lockout, IP blocking, step-up auth
+
+## What's in here
+
+| Section | What it covers |
+| --- | --- |
+| [Plugin system](/docs/developer/plugins) | Plugin contract, registration, hooks, theme widgets, lifecycle |
+| [API reference](/docs/developer/api) | Authentication, tokens, rate limiting, endpoint reference (posts, media) |
+| [Configuration](/docs/developer/configuration) | Settings registry — the Zod-validated, encrypted key/value store every plugin reads from |
+
+## How NextPress thinks about extensibility
+
+Every feature in NextPress — users, posts, media, security, even the SEO meta tags — is a plugin. Core plugins live under `src/core-plugins/`; third-party plugins live under `src/plugins/`. The contract is the same. There's no "WordPress vs plugins" two-tier model — if you can do it in core, you can do it in a plugin.
+
+The full plugin contract lives in [Plugin system](/docs/developer/plugins). The REST API surface — for headless consumers, mobile clients, integrations — is in [API reference](/docs/developer/api).

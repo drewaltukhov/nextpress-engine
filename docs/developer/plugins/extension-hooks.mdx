@@ -1,0 +1,86 @@
+---
+title: Extension hooks
+description: Three first-class hooks plugins use to extend the engine — for JSON-LD, theme metadata, and the post edit form.
+---
+
+Most plugins extend NextPress through three named hooks. Together they cover the common cases — adding structured data, prefetching data for theme widgets, and contributing fields to the post editor — without the plugin having to touch engine internals.
+
+All three are typed via TypeScript module augmentation, so the signatures below are what you'll see in your IDE.
+
+## `seo.jsonld.post` — contribute JSON-LD nodes
+
+Push extra schema.org nodes (`Review`, `Recipe`, `FAQPage`, anything) into the JSON-LD graph the engine emits for a published post.
+
+```typescript
+import type { FilterMap } from "@core/hooks/types"; // augmented type only
+
+api.hooks.filter("seo.jsonld.post", ({ value, ctx }) => {
+  const review = buildReviewNode(ctx.post, ctx.siteUrl);
+  return review ? [...value, review] : value;
+});
+```
+
+**Context** (`ctx`):
+- `post` — the `PostDetail` being rendered
+- `pageUrl` — absolute URL of the post's public page
+- `siteUrl` — absolute site origin (no trailing slash)
+
+The engine wraps your nodes into a single `@graph` and de-dupes by `@type` — plugin-emitted nodes override the engine's auto-generated node for the same type. Mounted in `posts/published-view.tsx:PostJsonLd` immediately after the engine's own nodes are built.
+
+## `theme.metadata` — prefetch data for theme widgets
+
+Plugins that ship Puck blocks usually need data fetched on the server before render (counts, items, settings). This hook lets the plugin walk the Puck trees being rendered, do its own fetch, and stash the result under a namespaced key.
+
+```typescript
+api.hooks.filter("theme.metadata", async ({ value, ctx }) => ({
+  ...value,
+  "my-plugin": {
+    items: await fetchItemsForBlocks(ctx.trees),
+  },
+}));
+```
+
+**Context** (`ctx`):
+- `trees` — flat array of every Puck `Data` being rendered on this route (header, footer, sidebars, template main). Walk with `forEachBlock` to find your blocks.
+- All other fields from `ActiveThemeContext` (route path, page, etc.)
+
+The result lands at `metadata.plugins["<your-slug>"]` and is passed to your Puck blocks via `puck.metadata.plugins["<your-slug>"]`. Convention: namespace under your plugin's slug; never write to a key another plugin owns.
+
+## `PostEditFieldset` — contribute a section to the post editor
+
+Add a custom fieldset to the post edit form — your component renders inside the engine's form, your `read` pulls existing state, your `save` persists after the engine's update succeeds.
+
+```typescript
+import { registerPostEditFieldset } from "@core/admin/post-edit-fieldsets";
+import { readReview, saveReview } from "./actions"; // "use server" actions
+import { ReviewFieldset } from "./ReviewFieldset";
+
+registerPostEditFieldset<ReviewState>({
+  id: "plugin:my-plugin:review", // must be namespaced — contains a colon
+  label: "Review",
+  defaultState: { rating: null, summary: "" },
+  read: (post) => readReview(post?.id ?? null),
+  save: (postId, state) => saveReview(postId, state),
+  Component: ReviewFieldset,
+});
+```
+
+**Contribution shape:**
+- `id` — stable namespaced id; `plugin:<slug>:<fieldset>` is the convention
+- `label` — section heading in the admin form
+- `defaultState` — initial value when no data exists yet
+- `read(post)` — pluck existing state from the post; can return a `Promise` (use a `"use server"` action if your state lives in a plugin-owned table)
+- `save(postId, state)` — persist after the engine's update succeeds
+- `Component` — React component receiving `{ value, onChange, post }`
+
+Registration is a side effect — `import "./post-edit-fieldset"` from your plugin entry, the side-effect file calls `registerPostEditFieldset`, and the engine discovers it. The registry survives Turbopack HMR.
+
+## Where to look in the engine
+
+| Hook | Declaration file | Mount point |
+|---|---|---|
+| `seo.jsonld.post` | `src/core-plugins/posts/jsonld-types.ts` | `src/core-plugins/posts/published-view.tsx:PostJsonLd` |
+| `theme.metadata` | `src/core-plugins/themes/render-types.ts` | `src/core-plugins/themes/render.ts` (renderActiveTheme) |
+| `PostEditFieldset` | `src/core/admin/post-edit-fieldsets.ts` | `src/app/admin/(shell)/posts/PostEditForm.tsx` |
+
+The declaration files are the source of truth for signatures — open them in your IDE for full types.

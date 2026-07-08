@@ -1,0 +1,162 @@
+---
+title: Theme Widgets
+description: How plugins ship Puck blocks for the public-facing theme renderer.
+---
+
+NextPress plugins can register two kinds of widgets: **dashboard widgets** (admin-only, registered via `api.dashboard.registerWidget` from your plugin's `index.tsx`) and **theme widgets** (public-facing Puck blocks droppable on any frontend surface, registered via a separate `theme-blocks.tsx` file in your plugin folder). This page covers theme widgets.
+
+## Why two files?
+
+Theme widgets must register on **both** the server (for `renderActiveTheme` on the public site) and the client (for the theme builder + page editor in admin). Your plugin's `index.tsx` runs only at server boot (`bootEngine`) and typically depends on server-only modules (`db`, `defineSettings`, `getSetting`). If a client editor tried to bundle `index.tsx`, those imports would crash the browser bundle.
+
+The fix: put block registrations in `<plugin-folder>/theme-blocks.tsx` — a **client-safe** file that imports only React, types, and the helper. The plugin discovery script (`scripts/plugins/discover.ts`) emits `src/generated/plugin-blocks.ts` with side-effect imports of every plugin's `theme-blocks` file. Both server (`renderActiveTheme`) and client (theme builder, page editor) bundles include the generated aggregator, so the cross-surface block registry is populated identically on both sides.
+
+## Plugin folder layout
+
+```
+plugins/my-plugin/
+├── plugin.json              # metadata
+├── index.tsx                # server-only register(): dashboard widget,
+│                            #   theme.metadata filter, defineSettings
+├── theme-blocks.tsx         # client-safe block registrations (this page)
+├── MyWidget.tsx             # presentational component
+├── service.ts               # server-only data fetching
+└── types.ts                 # shared types between index.tsx and theme-blocks.tsx
+```
+
+If `theme-blocks.tsx` (or `theme-blocks.ts`) is present, the discovery script auto-wires it. No `plugin.json` change needed — convention over configuration.
+
+## Registering a theme widget
+
+```tsx
+// plugins/crypto-beat/theme-blocks.tsx
+import type { ComponentConfig } from "@measured/puck";
+import type { Surface } from "@core/blocks/registry";
+import { registerPluginThemeBlocks } from "@core/blocks/plugin-blocks";
+import { CryptoBeatWidget } from "./CryptoBeatWidget";
+import type { CryptoBeatWidgetData } from "./types";
+
+interface CryptoPricesProps { showTitle: boolean; }
+
+const CryptoPricesConfig: ComponentConfig<CryptoPricesProps> = {
+  label: "Crypto Prices",
+  fields: {
+    showTitle: {
+      type: "radio",
+      label: "Show widget title",
+      options: [
+        { label: "Yes", value: true },
+        { label: "No", value: false },
+      ],
+    },
+  },
+  defaultProps: { showTitle: true },
+  render: ({ showTitle, puck }) => {
+    const slot = (puck?.metadata as { plugins?: Record<string, unknown> })
+      ?.plugins?.["crypto-beat"] as CryptoBeatWidgetData | undefined;
+    // … render slot data …
+  },
+};
+
+registerPluginThemeBlocks({
+  slug: "crypto-beat",            // must match plugin.json slug
+  blocks: [
+    {
+      name: "Prices",              // bare name — engine prefixes it
+      config: CryptoPricesConfig,
+      surfaces: ["sidebar", "post-content"],
+      category: "Crypto Beat",
+    },
+  ],
+});
+```
+
+The helper takes `slug`, optional `type` (`"plugin"` default, or `"theme"` for theme manifests), and an array of blocks. It applies the strict-namespacing rule below to each block.
+
+## Block-name namespacing
+
+`registerPluginThemeBlocks` **strictly auto-prefixes** every block name with `plugin:<your-slug>:`. If your plugin slug is `crypto-beat` and you register `name: "Prices"`, the registry stores it as `plugin:crypto-beat:Prices`. Themes get `theme:<slug>:` instead.
+
+The same rule applies to the lower-level `api.blocks.register()` (used inside `register(api)` in `index.tsx` for server-only blocks — uncommon, but available).
+
+- **You write the bare name.** Including a colon in `name` is an error — the helper throws.
+- **Saved Puck data references the prefixed name.** `block.type === "plugin:crypto-beat:Prices"` lives forever in saved pages.
+- **Renaming is a breaking change.** A page that placed `Prices` will silently skip the block if you rename it to `PriceList` — Puck returns `null` for unknown component types.
+- **Plugins cannot collide** with each other or with core blocks. Plugin slugs are unique; core blocks (`SearchBox`, `PostTitle`, etc.) keep bare names that contain no colon.
+
+## Surfaces
+
+Pick from the full `Surface` enum:
+
+```
+"page-content" | "post-content" | "header" | "footer" | "sidebar"
+"template-homepage" | "template-single-page" | "template-single-post"
+"template-topic-archive" | "template-not-found"
+"template-search-results" | "template-author"
+```
+
+The engine doesn't restrict which surfaces a plugin block targets. Pick whatever combination makes sense for your widget — header strips, sidebar boxes, content-zone embeds are all valid.
+
+## Per-instance fields
+
+Use Puck's `ComponentConfig.fields` for instance-editable knobs and `defaultProps` for sensible defaults. The Crypto Beat `showTitle` field above is the canonical minimal example.
+
+## RSC rules — what runs where
+
+The block's `render` function runs **server-side** inside Puck's `<Render>` walk during `renderActiveTheme`. Three rules:
+
+1. **`render` is sync.** Don't return a `Promise`. The public render path doesn't reliably support async server components inside Puck. Fetch your data via the `theme.metadata` filter (below).
+2. **No `"use client"` icon libraries** that call `useContext` internally. Lucide-react v1's `<Icon>` is the precedent: it crashes the Puck render with `Cannot read properties of null (reading 'useContext')` because the public render path doesn't bridge client components through Next.js's RSC machinery. Use inline SVG or pure-server icons (see `src/core-plugins/site-widgets/SearchBox.tsx` for an inline-SVG pattern).
+3. **For interactivity** prefer native HTML — the popover API, forms with `action="..."`, `<details>` — like `SearchBox` does. Or split your block into a thin client wrapper and import it from your `render` body.
+
+## Fetching data — the `theme.metadata` filter
+
+Plugins push render-time data into `metadata.plugins[<your-slug>]` via the typed `theme.metadata` filter. Your block reads it from `puck.metadata`.
+
+```ts
+// In your plugin's register(api):
+api.hooks.filter("theme.metadata", async ({ value, ctx }) => ({
+  ...value,
+  "my-plugin": await fetchMyData(ctx),
+}));
+
+// In your block's render:
+render: ({ puck }) => {
+  const slot = (puck?.metadata as { plugins?: Record<string, unknown> })
+    ?.plugins?.["my-plugin"] as MyData | undefined;
+  // ... use slot ?? defaults
+};
+```
+
+**Convention:** namespace your filter contribution under your plugin slug. Two plugins picking the same key would clobber each other.
+
+**Performance note:** every public theme render runs every plugin's `theme.metadata` handler, even on pages that don't use your blocks. Cache aggressively — share the same cache your dashboard widget uses if applicable.
+
+## Sharing components with a dashboard widget
+
+The cleanest pattern (used by Crypto Beat) keeps one presentational component that both surfaces render:
+
+1. Keep your widget Component **pure-presentational** — props in, JSX out, no hooks, no state, no `"use client"`. Place it in `<plugin>/MyWidget.tsx` so both `index.tsx` and `theme-blocks.tsx` can import it.
+2. Factor your data fetcher into a **local async function** in `index.tsx` (e.g. `async function fetchPrices(db)`).
+3. **In `index.tsx`** (server-only) register the dashboard widget and the data filter:
+   - `api.dashboard.registerWidget(...)` — calls `fetchPrices` in its `fetch` callback.
+   - `api.hooks.filter("theme.metadata", async ({ value }) => ({ ...value, "<slug>": await fetchPrices(dbInstance()) }))`.
+4. **In `theme-blocks.tsx`** (client-safe) register the block via `registerPluginThemeBlocks` — its `render` reads from `puck.metadata.plugins["<slug>"]`.
+
+Put any types shared between the two files (e.g. the data shape returned by your fetcher) in `<plugin>/types.ts`.
+
+## Empty states with admin links
+
+If your widget links to admin settings when misconfigured (no API key, no items), suppress the link on the public surface. A boolean prop is the cleanest gate:
+
+```ts
+function MyWidget({ showAdminCTAs = true /* ... */ }) {
+  return showAdminCTAs ? <AdminLink /> : null;
+}
+```
+
+The dashboard registration uses `showAdminCTAs={true}` (the default). The block's `render` passes `showAdminCTAs={false}`.
+
+## Category convention
+
+Default your `category` to your plugin's display name so all your widgets cluster together in the editor's component picker.

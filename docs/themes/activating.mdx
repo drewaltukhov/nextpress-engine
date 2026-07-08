@@ -1,0 +1,84 @@
+---
+title: Activating a theme
+description: Switch the active theme, customize per-theme settings, and understand what carries over between themes.
+---
+
+Switching themes is a one-click operation, but a few details are worth understanding before you flip the switch — especially on a site with significant content.
+
+## The active theme
+
+NextPress has exactly one active theme at a time. The active theme is responsible for:
+
+- Rendering every public route — homepage, single posts, single pages, topic archives, search, 404, author profiles.
+- Owning the **templates** (Single Post, Single Page, etc.) and the **chrome** (header, footer, sidebars).
+- Defining per-theme settings (header logo, favicon, color tokens, fonts).
+
+Inactive themes still exist in the system — you can preview them, customize their templates ahead of activation, and switch back any time.
+
+## Activating a theme
+
+1. **Themes** in the admin sidebar.
+2. The theme grid shows every theme installed. The active one has an "Active" badge.
+3. On a different theme's card, click **Activate**.
+4. A confirmation dialog appears. Read it (see "What happens on activation" below) and confirm.
+5. The active badge moves to the new theme. Public routes start rendering with it immediately.
+
+## What happens on activation
+
+Three things, in order:
+
+1. **First-time clone.** If the target theme has never been activated before, NextPress copies its default templates and chrome (header, sidebars, footer) from the theme's source files into your `theme_data` table. After this point, the templates are *yours* — edit them freely in the theme builder, and your edits won't be lost when the theme's source files update.
+2. **Active flag flips.** The site-wide `active_theme` setting is updated. Subsequent public requests render through the new theme.
+3. **Cache flush.** The page cache and any theme-derived caches (rendered CSS, favicon data) are invalidated. The next request rebuilds them.
+
+The flip is atomic — there's no "half-switched" intermediate state visible to visitors.
+
+## What carries over between themes
+
+- **All your content.** Posts, pages, topics, media, users, redirects — every content table is theme-agnostic.
+- **Site settings.** Site title, tagline, URL, timezone, SEO defaults, SMTP, security thresholds — all preserved.
+- **Menus.** Every menu you've built stays. The new theme picks them up via its own Nav Menu widget configuration.
+
+## What doesn't carry over
+
+- **Template arrangement.** If you customized templates in the previous theme (e.g. added a specific widget to Single Post's main zone), those customizations stay attached to the *previous* theme's data. They reappear if you switch back, but they don't follow you to the new theme.
+- **Per-theme settings.** Logo, favicon, color tokens, fonts — these live under each theme's settings namespace, so the new theme starts with its own defaults.
+
+## Per-theme settings
+
+Each theme has its own settings page under **Themes → \<theme\> → Settings**. Common fields most themes expose:
+
+| Field | What it controls |
+| --- | --- |
+| **Header logo** | The image (or SVG) shown in the header. Falls back to the site title text if unset. |
+| **Favicon** | The browser tab icon. Stored as a data URL in the theme settings so it survives storage backend changes. |
+| **Color tokens** | Theme-defined brand colors. The active theme exposes these to its templates via CSS custom properties. |
+| **Fonts** | Display font, body font. Usually picked from a curated list the theme ships with. |
+| **Layout overrides** | Things like "default sidebar width" or "header sticky on scroll" — theme-specific. |
+
+Each theme decides which settings to expose. Some are minimal; others have dozens of options.
+
+## Previewing a theme without activating
+
+From the theme grid, click **Preview** on any inactive theme. NextPress opens a preview tab where every public route is rendered with that theme, but the site itself is unchanged for everyone else. The preview honors your customizations to that theme's templates, so you can use the theme builder to set up a new theme before you flip the switch.
+
+The preview is gated by a signed URL — only signed-in admins can hit it.
+
+## Activating then switching back
+
+Switching back is the same flow — activate the old theme, and the previous customizations come back exactly as they were. NextPress doesn't delete the new theme's theme data when you deactivate it; it just stops rendering with it.
+
+This is the safety valve when an activation goes poorly. Always click around the public site for a minute after activation to catch issues; if anything looks off, switch back, fix the issue (template tweak, missing setting), and re-activate.
+
+## Deleting a theme
+
+From the theme grid, "•••" → **Delete** removes the theme's source files and its `theme_data`. Step-up auth required.
+
+You can't delete the **active** theme — activate a different one first, then delete the old one.
+
+## Tips
+
+- **Set per-theme favicon and logo before activating.** Going live with the theme's default placeholder branding is a small papercut visitors notice.
+- **Preview a theme on your phone.** Mobile is where theme bugs hide. The preview URL works on any device signed in to the same admin session.
+- **Customize the theme builder, not the source files.** Edit templates through the theme builder — your changes go into `theme_data` and survive theme updates. Editing the theme's source `.tsx` files works but gets clobbered on plugin updates.
+- **Activate in production, customize in dev first.** For complex themes, set up the customizations in your local dev environment, export the theme data, then import in production after activation. See [Customizing → Exporting & importing](/docs/themes/customizing#exporting-and-importing-theme-data).

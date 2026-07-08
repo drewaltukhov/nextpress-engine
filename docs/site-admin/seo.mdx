@@ -1,0 +1,151 @@
+---
+title: SEO Routes
+description: Built-in SEO routes — sitemap, robots.txt, RSS feed, and structured data.
+---
+
+## Always-on SEO routes
+
+NextPress ships a set of SEO routes that are always available. They populate automatically from your published content.
+
+### `/sitemap.xml`
+
+A sitemap in the [Sitemaps protocol](https://www.sitemaps.org/protocol.html) format listing every canonical URL — homepage, pages, posts (pillars, standalones, spikes), topic archives, and author pages — each with a `lastmod` timestamp. Individual pages and posts can be excluded with their per-item "Exclude from sitemap" toggle.
+
+**Cache:** 1 hour (`s-maxage=3600`)
+
+### `/robots.txt`
+
+Generated dynamically. The default production output:
+
+```
+User-agent: *
+Allow: /
+
+# Admin paths
+Disallow: /admin/
+Disallow: /api/
+
+Sitemap: https://your-site.com/sitemap.xml
+```
+
+On preview/staging deployments (and in development) it blocks all crawling instead. You can override the body or layer on crawler controls from **Admin → SEO → Robots** — see [Controlling crawlers](#controlling-crawlers-admin--seo--robots) below.
+
+**Cache:** 1 hour (`s-maxage=3600`) — this also bounds how long a toggle change on the Robots tab takes to reach crawlers.
+
+### `/rss.xml`
+
+RSS 2.0 feed with an Atom self-link, listing the most recent published posts. The site layout advertises it with a `<link rel="alternate" type="application/rss+xml">` tag so feed readers discover it automatically.
+
+**Cache:** 30 minutes (`s-maxage=1800`)
+
+### `/llms.txt`
+
+A curated, markdown-style index for AI agents and LLMs, following the [llms.txt proposal](https://llmstxt.org). It gives an agent a short site summary plus the canonical entry points (sitemap, RSS, docs), the most recent posts, and the search endpoint — so it doesn't have to crawl the whole site to orient itself. This route returns **404** when "Discourage AI agents" is on, and also while "Discourage search engines" hides the whole site (see below).
+
+**Cache:** 1 hour (`s-maxage=3600`)
+
+## Controlling crawlers (Admin → SEO → Robots)
+
+The **Robots** tab under **SEO** controls who may crawl the site. It has two independent master toggles and a custom-override field, with a live preview of the exact `/robots.txt` the site will serve.
+
+### Discourage search engines
+
+When on, the site disappears from search:
+
+- every public page emits `noindex`,
+- `/robots.txt` returns `User-agent: * / Disallow: /` (blocks **all** crawlers, including AI agents) with a `Content-Signal: search=no, ai-input=no, ai-train=no` opt-out, and
+- `/sitemap.xml` and `/llms.txt` return 404.
+
+Use it on staging or while building. It overrides everything else on this tab. **Remember to turn it off after launch** — leaving it on is the most common reason a live site never appears in search results.
+
+### Discourage AI agents
+
+A separate switch for the case where you want search engines to keep indexing the site but want to ask AI crawlers to stay away. When on:
+
+- `/robots.txt` adds an explicit `Disallow: /` block for each named AI crawler,
+- the default `User-agent: *` group carries a [Content-Signal](https://contentsignals.org) usage policy of `search=yes, ai-input=no, ai-train=no`, which also reaches AI systems that aren't on the named list (when off, only `search=yes` is emitted — silence rather than an explicit grant for AI use), and
+- `/llms.txt` returns 404.
+
+```
+# AI crawler access is disabled in site settings.
+User-agent: GPTBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+User-agent: Google-Extended
+Disallow: /
+# …and the rest of the list, followed by your normal rules
+```
+
+The named crawlers include OpenAI (`GPTBot`, `OAI-SearchBot`, `ChatGPT-User`), Anthropic (`ClaudeBot`, `anthropic-ai`, `Claude-Web`), `Google-Extended`, Perplexity (`PerplexityBot`, `Perplexity-User`), `CCBot` (Common Crawl), `Bytespider`, `Amazonbot`, `Applebot-Extended`, `Meta-ExternalAgent`, `cohere-ai`, and `Diffbot`.
+
+This is **advisory only** — enforcement depends on each bot honoring `robots.txt`; NextPress does not block them at the network level. When "Discourage search engines" is already on, AI agents are covered by the site-wide block and this toggle is disabled.
+
+### Custom robots.txt
+
+Leave blank to use the generated default. Provide your own to replace the body entirely — the AI-agent stanzas still get prepended when "Discourage AI agents" is on, and "Discourage search engines" still overrides it. This field is ignored while search engines are discouraged.
+
+If your custom content already has a `User-agent` group for one of the named AI crawlers (say, an `Allow` carve-out for `GPTBot`), the prepended block skips that bot — your rule stays authoritative instead of being contradicted by a duplicate group. Content-Signal lines are never injected into custom content; add your own if you want them.
+
+**Precedence:** Discourage search engines (or staging) → custom content (or default body), with the AI-agent stanzas prepended when AI agents are discouraged.
+
+## JSON-LD structured data
+
+NextPress provides helpers for generating Schema.org structured data:
+
+```typescript
+import {
+  articleJsonLd,
+  webSiteJsonLd,
+  breadcrumbJsonLd,
+  wrapJsonLdGraph
+} from "@core-plugins/seo";
+
+// Generate a JSON-LD graph for a page
+const jsonLd = wrapJsonLdGraph([
+  webSiteJsonLd({ name: "My Site", url: "https://example.com" }),
+  articleJsonLd({
+    headline: "My Post",
+    url: "https://example.com/my-post",
+    datePublished: "2026-05-01T12:00:00Z",
+    author: { name: "Drew" }
+  }),
+  breadcrumbJsonLd([
+    { name: "Home", url: "https://example.com" },
+    { name: "Blog", url: "https://example.com/blog" },
+    { name: "My Post", url: "https://example.com/my-post" }
+  ])
+]);
+```
+
+Output:
+```json
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    { "@type": "WebSite", "name": "My Site", "url": "https://example.com" },
+    { "@type": "Article", "headline": "My Post", ... },
+    { "@type": "BreadcrumbList", "itemListElement": [...] }
+  ]
+}
+```
+
+## SeoMetadata type
+
+Every public page uses the `SeoMetadata` type to drive `<head>` tags:
+
+```typescript
+interface SeoMetadata {
+  title: string;
+  description: string;
+  canonical: string;
+  noindex?: boolean;
+  og: { title: string; description: string; image?: string; type: "website" | "article" };
+  jsonLd: object[];
+  breadcrumbs: Array<{ name: string; url: string }>;
+}
+```
+
+This type is consumed by Next.js `generateMetadata()` to emit `<title>`, `<meta>`, Open Graph tags, and `<script type="application/ld+json">` blocks.

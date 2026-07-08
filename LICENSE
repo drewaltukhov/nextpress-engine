@@ -1,0 +1,27 @@
+NextPress
+Copyright (c) 2026 Drew Altukhov
+
+Licensed under the PolyForm Noncommercial License 1.0.0.
+
+The full canonical text of this license is published by the PolyForm
+Project and is available at:
+
+  https://polyformproject.org/licenses/noncommercial/1.0.0/
+
+SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+
+Plain-language summary (non-binding — the canonical text above governs):
+
+- You may use, modify, and share this software for any **noncommercial**
+  purpose, including personal projects, internal evaluation, academic
+  research, and noncommercial open-source distribution.
+- **Commercial use is not granted by this license.** "Commercial use"
+  includes any use intended for or directed toward commercial advantage
+  or monetary compensation, including but not limited to: hosting this
+  software as a paid service, embedding it in a product or service you
+  charge for, or using it to operate a business.
+- For commercial use, please contact the copyright holder via the
+  project's GitHub repository:
+  https://github.com/drewaltukhov/nextpress
+- This software is provided "AS IS", without warranty of any kind. See
+  the canonical license text for the full disclaimer.

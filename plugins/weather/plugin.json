@@ -1,0 +1,18 @@
+{
+  "slug": "weather",
+  "name": "Weather",
+  "version": "1.0.0",
+  "engine": "^1.0.0",
+  "type": "plugin",
+  "tier": "standard",
+  "dependencies": ["settings"],
+  "capabilities": {
+    "registers_admin_menu": true,
+    "registers_routes": false,
+    "exposes_hooks": []
+  },
+  "admin": {
+    "label": "Weather",
+    "icon": "M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "slug": "logging",
+  "name": "Logging",
+  "version": "1.0.0",
+  "engine": "^1.0.0",
+  "type": "plugin",
+  "tier": "essential",
+  "dependencies": ["users"],
+  "capabilities": {
+    "exposes_hooks": ["audit.beforeWrite", "system_log.beforeWrite"]
+  }
+}

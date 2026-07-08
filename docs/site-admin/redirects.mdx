@@ -1,0 +1,59 @@
+---
+title: Redirects
+description: URL redirect management — automatic creation on slug changes, cycle detection, and hit tracking.
+---
+
+## Overview
+
+The redirects plugin manages URL redirects with automatic creation, cycle detection, and analytics.
+
+## Creating redirects
+
+### Manual redirects
+
+Create redirects through the admin UI at `/admin/redirects`:
+
+| Field | Description |
+|-------|-------------|
+| **From path** | The old URL path (e.g. `/old-post-slug`) |
+| **To path** | The destination (path or full URL) |
+| **Status** | HTTP status code (301, 302, 307, 308, 410) |
+| **Notes** | Optional internal notes |
+| **Expires at** | Optional expiration date |
+
+### Auto-created redirects
+
+NextPress automatically creates 301 redirects when:
+
+- A post's slug or permalink changes (`source: permalink_change`)
+- A term's slug changes (`source: slug_change`)
+- A media file is renamed (`source: media_rename`)
+
+This ensures old URLs continue working after content is reorganized.
+
+## Status codes
+
+| Code | Name | Use case |
+|------|------|----------|
+| **301** | Moved Permanently | Content moved to a new URL (default) |
+| **302** | Found | Temporary redirect |
+| **307** | Temporary Redirect | Temporary, preserves HTTP method |
+| **308** | Permanent Redirect | Permanent, preserves HTTP method |
+| **410** | Gone | Content deliberately removed (returns "removed" page) |
+
+## Cycle detection
+
+NextPress prevents redirect loops by validating the chain before creating a redirect. If following the redirect chain leads back to the origin or exceeds 5 hops, the redirect is rejected with a `RedirectCycleError`.
+
+## Hit tracking
+
+Each redirect tracks:
+
+- **`hit_count`** — total number of times the redirect was followed
+- **`last_hit_at`** — timestamp of the most recent hit
+
+Hit counts update asynchronously (fire-and-forget) to avoid slowing down the redirect response.
+
+## Deactivation vs. deletion
+
+Redirects can be **deactivated** (set `active = false`) without deleting them. This preserves the redirect history and allows easy reactivation. Permanent deletion removes the record entirely.

@@ -1,0 +1,14 @@
+{
+  "slug": "pages",
+  "name": "Pages",
+  "version": "1.0.0",
+  "engine": "^1.0.0",
+  "type": "plugin",
+  "tier": "essential",
+  "dependencies": ["users", "logging"],
+  "capabilities": {
+    "registers_admin_menu": false,
+    "registers_routes": false,
+    "exposes_hooks": []
+  }
+}

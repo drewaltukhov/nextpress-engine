@@ -1,0 +1,33 @@
+NextPress demo snapshot summary
+===============================
+
+engine:        nextpress
+version:       1.6.2
+provider:      turso
+createdAt:     2026-07-08T11:34:59.239Z
+includesMedia: true
+includesLogs:  false
+totalRows:     343
+bundleBytes:   7746640
+
+Tables (20):
+  allowed_ips                                   0 row(s)
+  blocked_ips                                   0 row(s)
+  content_revisions                             3 row(s)
+  galleries                                     1 row(s)
+  gallery_items                                15 row(s)
+  media                                        21 row(s)
+  menu_item_mega_panels                         3 row(s)
+  menu_items                                   30 row(s)
+  menus                                         2 row(s)
+  pages                                         3 row(s)
+  plugins                                      20 row(s)
+  posts                                        34 row(s)
+  posts_topics                                 34 row(s)
+  redirects                                     0 row(s)
+  reserved_slugs                               15 row(s)
+  roles                                         4 row(s)
+  site_settings                               131 row(s)
+  theme_data                                   21 row(s)
+  topics                                        5 row(s)
+  users                                         1 row(s)

@@ -1,0 +1,158 @@
+---
+title: Posts
+description: Write, publish, and manage posts — articles, blog entries, anything with a date.
+---
+
+A **post** is dated content. Posts have a publication time, an author, optional topics, and live in the RSS feed and the post archive. URL is `/<slug>` by default — same as pages — but unlike pages, posts feed into topic archives, the homepage list, and `/search`.
+
+This guide covers everything from drafting to scheduling to managing the post list.
+
+## Post kinds
+
+NextPress has three post kinds, all stored in the same table but rendered with different relationships:
+
+| Kind | What it is |
+| --- | --- |
+| **Standalone** | The default. A self-contained article. |
+| **Pillar** | A long-form hub post. Other posts (its "spikes") link back to it. See [Pillars & spikes](/docs/guides/pillars-and-spikes). |
+| **Spike** | A focused post that belongs to a pillar. Inherits the pillar's topic and shows up in the pillar's spike list. |
+
+You pick the kind when creating the post — most posts are standalone. Pillar/spike is opt-in for sites doing topical clustering.
+
+## Creating a post
+
+1. **Posts → All posts → New post**.
+2. The editor opens with a draft titled "Untitled" and your account set as the author.
+3. Type a title. The slug auto-fills (you can edit it in the right rail).
+4. Optionally set a **featured image** (right rail). The Hero Title widget, OG cards, and post-feature grids use this.
+5. Fill the body. The editor is the same block-based editor pages use; see [Pages](/docs/guides/pages) for the block tour.
+6. Pick a **published-at date** — the default is the current time, but you can backdate or schedule into the future.
+7. Click **Publish**.
+
+## Post editor panels
+
+### Body
+
+The block editor. Same blocks as pages. Common picks for posts:
+
+- **Rich Text** — body paragraphs. The Tiptap inline editor handles links, formatting, embedded media shortcodes.
+- **Image** — single image with caption.
+- **Gallery** — image grids.
+- **YouTube** — embedded video.
+- **Banner / Hero / FAQ Section** — sectioned layouts.
+- **Table of Contents** — auto-generated from the post's heading hierarchy.
+
+The full block list is in [Pages → common blocks for pages](/docs/guides/pages#common-blocks-for-pages).
+
+### Featured image
+
+The right-rail **Featured image** panel picks an image from the media library (or uploads a new one). It's used in:
+
+- The post archive's thumbnails.
+- The Hero Title widget's background (when no explicit image is set on the widget).
+- The OG image meta tag (when no SEO OG image is set).
+- The RSS feed enclosure.
+
+You can clear it any time. If unset, the public renderer falls back to nothing — the post just doesn't have a thumbnail in feeds.
+
+### Excerpt
+
+The **Excerpt** panel in the right rail is a plain-text field (500 character maximum) that holds a short summary of the post — typically one or two sentences.
+
+Where excerpts appear:
+
+- **SEO meta description** — when the SEO description is left blank, the engine falls back to the excerpt, then to the first paragraph of the body.
+- **Feed widgets** — the [Recent Posts](/docs/themes/widgets#recent-posts), [Newspaper Hero](/docs/themes/newspaper-widgets), and the other Newspaper widgets all have a **Show excerpt** toggle. When it's on, the excerpt text appears under the post title in the card or list row.
+- **RSS feed** — some readers pull the `<description>` tag, which uses the excerpt.
+
+The Excerpt panel is collapsed by default. Click the panel header to expand it. The character counter beneath the textarea updates as you type.
+
+### SEO
+
+Same panel layout as pages. The defaults are smart:
+
+- SEO title → post title.
+- SEO description → excerpt → first paragraph of the body.
+- OG image → featured image.
+- Robots → `index,follow`.
+- Canonical → the post's own URL.
+
+Override any of these per-post when needed.
+
+### Topics
+
+The **Topics** panel is a multi-select of every topic in the system. Pick zero or more. Posts show up under `/topics/<slug>` for each topic you pick.
+
+Need a new topic? Add one under [Topics](/docs/guides/topics) — it'll appear in the picker next time.
+
+### Schedule / publish
+
+The **Publish** button is a menu:
+
+- **Save draft** — keep it private. Returns 404 to anonymous visitors.
+- **Publish now** — make it live immediately.
+- **Schedule** — pick a future date/time. The post stays a draft until then; the engine flips it to published automatically.
+- **Move to trash** — soft delete (recoverable).
+
+The **Published at** field controls the visible date — independent of when you click Publish. So you can backdate a post (e.g. "we wrote this last week"), and you can publish a post with a future date and it goes live immediately but shows the future date.
+
+### Author
+
+By default, the post's author is the user who created it. Editors can change the author from the **Author** dropdown — useful when you're publishing on behalf of someone else.
+
+## Post statuses
+
+| Status | Public visibility | Editable by |
+| --- | --- | --- |
+| **Draft** | 404 to anonymous; signed-in admins can preview | All editors |
+| **Scheduled** | 404 until publish date hits | All editors |
+| **Published** | Live at `/<slug>`; in feeds | All editors |
+| **Trash** | 404 to all; restorable | All editors |
+
+## The post list
+
+**Posts → All posts** shows every post with filters and sort:
+
+| Filter | What it does |
+| --- | --- |
+| **Status** | Draft / Scheduled / Published / Trash. Toggle each independently. |
+| **Topic** | Posts tagged with the chosen topic. |
+| **Author** | Posts created by the chosen user. |
+| **Date range** | Filter by published-at. |
+| **Search** | Title, slug, excerpt. Full-body search via the API; the admin list filters on metadata only. |
+
+Bulk actions (top-right of the list):
+
+- **Publish** — flip selected drafts to published with the current time.
+- **Move to trash** — bulk soft delete.
+- **Change author** — re-assign multiple posts at once.
+
+## Slug changes
+
+When you change a published post's slug, NextPress auto-creates a 301 redirect from the old URL to the new one. The redirect appears under **Site admin → Redirects** for you to inspect or remove.
+
+## Revisions
+
+Every save creates a revision. From the editor's "•••" menu (top-right), open **Revision history** to see the timeline. Each entry has:
+
+- Timestamp.
+- The user who saved it.
+- A diff against the previous revision.
+- A **Restore** button — restoring rolls the post back to that revision but doesn't delete newer revisions.
+
+## Embedding media via shortcodes
+
+If you'd rather paste a tag than drag a block, the Rich Text block accepts short codes:
+
+- `[gallery id="12"]` — embed gallery #12 from the media library.
+- `[img id="34"]` — embed image #34, full-size with caption.
+- `[thumb id="34"]` — embed image #34 as a thumbnail with a lightbox.
+
+Hit **Save** and the public renderer expands them to the corresponding blocks. The editor previews the rendered output.
+
+## Tips
+
+- **Slug stability.** Once a post has been shared, changing the slug breaks the original link. The auto-redirect catches it, but pick a thoughtful slug at publish time anyway.
+- **Backdating.** Backdating a post by changing **Published at** doesn't change the slug — and the post sorts by `published_at` everywhere, so backdated posts can disappear into the feed.
+- **Scheduling and timezone.** The schedule input is in your site timezone (set during first-run). Double-check the timezone if posts are publishing at unexpected hours.
+- **Featured image vs OG image.** Setting only the featured image is usually enough — OG meta tags automatically use it. Set the **SEO OG image** separately when the social card needs a different image from the in-page thumbnail.

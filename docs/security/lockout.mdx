@@ -1,0 +1,36 @@
+---
+title: Account Lockout
+description: Per-email brute-force protection with sliding-window lockout.
+---
+
+## How it works
+
+NextPress uses a **sliding-window** lockout system inspired by Wordfence:
+
+1. Every failed login attempt is recorded in the `failed_logins` table with timestamp, email, IP, and reason
+2. After each failure, the system counts recent failures for that email
+3. If the count reaches the threshold within the window, the account locks
+
+## Default thresholds
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Failure threshold | **5** | Failed attempts before lockout triggers |
+| Window | **15 minutes** | Sliding window for counting failures |
+| Lockout duration | **30 minutes** | How long the account stays locked |
+
+All three are configurable from **Admin → Security → Settings**. The values above are the defaults applied when the row is unset; saved overrides take effect on the next login attempt without a restart.
+
+## What the attacker sees
+
+Locked accounts receive the same generic "Invalid sign-in" response as wrong-password attempts. The system **never reveals** whether an account is locked — this prevents attackers from using lockout status to confirm email addresses exist.
+
+Internally, locked-account attempts are logged with reason `rate_limited` (not `locked`) to avoid leaking state even in log analysis.
+
+## Automatic recovery
+
+Lockouts expire automatically after the duration. No admin action needed. On successful login, the lockout counter resets to zero.
+
+## Admin unlock
+
+Admins can manually unlock accounts through the Security admin screen. Manual unlocks require **step-up authentication** and are audit-logged.

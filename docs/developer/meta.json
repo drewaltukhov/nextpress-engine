@@ -1,0 +1,6 @@
+{
+  "title": "Developer",
+  "description": "Plugin architecture, API reference, advanced configuration.",
+  "icon": "Code",
+  "pages": ["index", "plugins", "api", "configuration"]
+}

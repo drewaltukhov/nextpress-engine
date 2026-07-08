@@ -1,0 +1,86 @@
+---
+title: Plugin Lifecycle
+description: How plugins boot, register, migrate, and handle failures.
+---
+
+## Boot sequence
+
+When NextPress starts, plugins go through a defined lifecycle:
+
+```
+1. Discovery    → scan plugin directories for plugin.json files
+2. Sort         → topological sort by dependencies
+3. Migrate      → run pending SQL migrations (with lock)
+4. Register     → call register(api) on each enabled plugin
+5. Ready        → all hooks registered, app serves requests
+```
+
+## Discovery
+
+The `npm run plugins:discover` command scans for `plugin.json` files in:
+
+- `src/core-plugins/*/plugin.json` — core plugins (shipped with engine)
+- `src/plugins/*/plugin.json` — custom plugins (your additions)
+
+## Dependency resolution
+
+Plugins declare dependencies in `plugin.json`:
+
+```json
+{
+  "dependencies": ["users", "logging"]
+}
+```
+
+The loader performs a topological sort and boots plugins in dependency order. Circular dependencies are rejected at discovery time.
+
+## Migration safety
+
+Each plugin's migrations run inside a lock:
+
+- **`migration_lock` row** prevents concurrent migration runs
+- **Checksum verification** detects modified migration files
+- **Statement breakpoints** (`--> statement-breakpoint`) split multi-statement SQL
+- **Per-plugin isolation** — a migration failure in one plugin doesn't block others
+
+## Failure isolation
+
+Plugin failures are sandboxed at every level:
+
+| Phase | What happens on failure |
+|-------|------------------------|
+| **Boot** | Plugin is disabled; others continue loading |
+| **Migration** | Migration rolls back; plugin stays at previous version |
+| **Register** | Plugin's hooks aren't registered; others unaffected |
+| **Hook execution** | Error is caught, logged to `plugin_failures`, hook chain continues |
+| **Route handler** | Request gets a 500; other routes unaffected |
+
+## Auto-disable
+
+Plugins that fail repeatedly are automatically disabled:
+
+- **Standard tier:** disabled after 3 boot failures
+- **Essential tier:** disabled after 5 boot failures (higher threshold for critical plugins)
+
+Disabled plugins can be re-enabled by an admin through the admin UI.
+
+## The `register(api)` contract
+
+Every plugin exports a default `register` function:
+
+```typescript
+import type { PluginAPI } from "@core/plugins/api";
+
+export default function register(api: PluginAPI): void {
+  // Register hooks
+  api.hooks.addAction("user.afterCreate", handleNewUser);
+
+  // Register admin menu items
+  api.admin.addMenuItem({ ... });
+
+  // Register settings
+  api.settings.define({ ... });
+}
+```
+
+The `PluginAPI` provides access to hooks, admin menus, settings, and other engine surfaces. Service-layer helpers (like `evaluateLockout` or `createApiToken`) are exported directly from the plugin module for use by other plugins.

@@ -1,0 +1,139 @@
+---
+title: Media API
+description: REST endpoints for listing, uploading, and deleting media via Bearer token.
+---
+
+The media endpoints expose the same library the admin UI uses — uploads land in whichever backend is active (**Database** by default; **Cloudflare R2** when configured and toggled on in Media → Settings), respect the same MIME allow-list, and run through the same upload pipeline: JPEG/BMP → WebP auto-conversion, longest-edge resize to 1920px, plus a 600px thumb. See [Media library](/docs/guides/media) for the full pipeline + backend details.
+
+## Resource shape
+
+```json
+{
+  "data": {
+    "id": "72e612f4-0fe8-4066-9448-7fd7a44dbc6b",
+    "filename": "np_test.png",
+    "mime": "image/png",
+    "size_bytes": 69,
+    "width": 1,
+    "height": 1,
+    "alt_text": null,
+    "uploaded_by": "37415dd4-...",
+    "uploaded_at": "2026-05-06T19:04:34.819Z",
+    "url": "/media/72e612f4-0fe8-4066-9448-7fd7a44dbc6b?v=k2x9pq7m",
+    "thumb_url": "/media/72e612f4-0fe8-4066-9448-7fd7a44dbc6b/thumb?v=k2x9pq7m"
+  }
+}
+```
+
+| Field | Notes |
+|-------|-------|
+| `id` | UUID; doubles as the URL slug |
+| `width` / `height` | `null` for non-image uploads (e.g. SVG without intrinsic size) |
+| `url` | Public URL to the original — `/media/<id>` for DB-backed rows, served from R2 via a transparent 302 for R2-backed rows. Identical form for both backends so links survive migrations. |
+| `thumb_url` | 600px WebP thumbnail when available; the route handler falls back to the original for SVG and rows where thumb generation failed. |
+| `?v=<hash>` | Short content-version query appended to both URLs. Changes when the row's storage backend or ref changes (i.e. after a migration), busting browser/CDN caches without requiring a hard refresh. |
+| `uploaded_by` | UUID of the user who owns the token used at upload time |
+
+## `GET /api/v1/media`
+
+List media metadata. **Scope:** `media:read`.
+
+Paginated. `page_size` defaults to 24 and is capped at 100.
+
+```bash
+curl -H "Authorization: Bearer npp_..." \
+  "https://your-site.com/api/v1/media?page=1&page_size=10"
+```
+
+```json
+{
+  "data": [ /* MediaSummary[] */ ],
+  "meta": { "page": 1, "page_size": 10, "total": 47 }
+}
+```
+
+## `GET /api/v1/media/:id`
+
+Fetch a single media row by id. **Scope:** `media:read`.
+
+```bash
+curl -H "Authorization: Bearer npp_..." \
+  "https://your-site.com/api/v1/media/72e612f4-0fe8-4066-9448-7fd7a44dbc6b"
+```
+
+Returns `404` with `{ "error": { "code": "not_found", ... } }` if the id doesn't exist.
+
+## `POST /api/v1/media`
+
+Upload a media file. **Scope:** `media:upload`.
+
+This endpoint takes `multipart/form-data` with a single `file` field.
+
+### Example — upload a PNG
+
+```bash
+curl -X POST -H "Authorization: Bearer npp_..." \
+     -F "file=@./hero.png" \
+     "https://your-site.com/api/v1/media"
+```
+
+Returns `201 Created` with the full media shape (see above).
+
+### Example — programmatic upload from Node
+
+```js
+import { readFile } from "node:fs/promises";
+
+const bytes = await readFile("./hero.jpg");
+const form = new FormData();
+form.append("file", new Blob([bytes], { type: "image/jpeg" }), "hero.jpg");
+
+const res = await fetch("https://your-site.com/api/v1/media", {
+  method: "POST",
+  headers: { Authorization: `Bearer ${process.env.NP_TOKEN}` },
+  body: form,
+});
+const { data } = await res.json();
+console.log(data.url); // /media/<uuid>
+```
+
+### Server-side processing
+
+The upload pipeline runs the same steps as the admin Upload tab:
+
+1. **Size check** — rejects files larger than `media.max_file_size_mb` (default 5 MB)
+2. **Auto-conversion** — JPEG and BMP are re-encoded to WebP when `media.convert_to_webp` is on (default true)
+3. **MIME allow-list** — final MIME must be in `media.allowed_mime_types` (default JPEG / PNG / WebP)
+4. **Dimension probe** — image width and height are read from the bytes when possible
+5. **Thumbnail generation** — a 600px WebP thumbnail is generated for non-SVG images
+
+### Error codes
+
+| Code | Status | When |
+|------|--------|------|
+| `invalid_body` | 400 | `Content-Type` is not `multipart/form-data`, or the body is unparsable |
+| `validation_error` | 400 | `file` field is missing |
+| `upload_rejected` | 400 | File exceeds size limit, or MIME not in allow-list |
+
+The error message includes the operative limit so you don't have to call `/api/v1/me` and the settings endpoints to figure out why the upload was refused.
+
+## `DELETE /api/v1/media/:id`
+
+Hard-delete a media row. **Scope:** `media:delete`.
+
+```bash
+curl -X DELETE -H "Authorization: Bearer npp_..." \
+  "https://your-site.com/api/v1/media/72e612f4-0fe8-4066-9448-7fd7a44dbc6b"
+```
+
+Response:
+
+```json
+{ "data": { "id": "72e612f4-0fe8-4066-9448-7fd7a44dbc6b", "deleted": true } }
+```
+
+There is no soft delete for media — once gone, the row and its blob are permanently removed.
+
+<Callout type="warn">
+Deleting a media row does **not** rewrite references to it. Any post whose `featured_image` pointed at the deleted media will start returning a broken image until the field is updated. Audit your posts before purging media that's still in active use.
+</Callout>

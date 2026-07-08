@@ -1,0 +1,113 @@
+---
+title: Theme builder
+description: The drag-and-drop tool for editing each template's header, footer, sidebars, and main content zone.
+---
+
+The **theme builder** is a visual editor for every template in your active theme. You open it once per theme, then jump between templates — Single Post, Single Page, Topic Archive, Homepage, 404, Search results, Author profile — adjusting the chrome and main content of each one.
+
+## Opening the builder
+
+1. **Themes** in the admin sidebar.
+2. On your active theme's card, click **Open builder**. (You can open the builder on any theme — active or not — but only the active theme's edits affect the public site.)
+3. The builder opens with the first template (Homepage) selected.
+
+The builder URL is `/admin/themes/<theme-slug>/builder` — bookmark-friendly.
+
+## Anatomy of the builder
+
+The builder has three regions:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Template tabs                                              │ ← top
+├──────────┬─────────────────────────────────────────┬────────┤
+│ Widgets  │                                         │        │
+│ rail     │           Schematic preview             │ Inspector
+│          │                                         │ rail
+│          │                                         │
+└──────────┴─────────────────────────────────────────┴────────┘
+```
+
+| Region | What it does |
+| --- | --- |
+| **Top tabs** | Switch between templates: Homepage, Single Page, Single Post, Pillar Post, Topic Archive, Search Results, Author Profile, 404. |
+| **Left rail (Widgets)** | The catalog of every widget you can drag in. Grouped by category (Template, Sections, Media, Text, Layout, Site). |
+| **Center (Schematic)** | The current template's layout: header, optional sidebars, main content zone, footer. Drop widgets into any zone. |
+| **Right rail (Inspector)** | Shows the settings of whichever widget you currently have selected. Empty when no widget is selected. |
+
+## Zones
+
+Every template has the same five zones (some are optional per-template):
+
+| Zone | What it represents |
+| --- | --- |
+| **Header** | Site-wide top chrome. Same content across every template by default — edit it once. |
+| **Left sidebar** | Optional. Off by default; toggle on per-template. |
+| **Right sidebar** | Optional. Off by default; toggle on per-template. |
+| **Main** | The template's primary content area. This is where the post body / page body / topic post list renders. |
+| **Footer** | Site-wide bottom chrome. Same across templates. |
+
+The header / footer / sidebars are **shared parts** — edit the header once, every template gets the change. Per-template overrides are opt-in (see "Custom sidebars" below).
+
+## Dropping widgets
+
+1. Drag a widget from the left rail into a zone in the center.
+2. Drop it where you want it (the existing widgets in the zone reshuffle to make room).
+3. Click the widget after dropping — the right rail shows its settings.
+
+## Editing a widget
+
+1. Click the widget in the schematic.
+2. The right rail (Inspector) shows the widget's settings — alignment, colors, content, whatever the widget exposes.
+3. Edit values; the schematic updates in real time.
+
+The right rail is sticky — it stays on the selected widget while you scroll through long templates.
+
+## Moving and reordering
+
+- **Drag** a widget within its zone to reorder.
+- **Drag** a widget to a different zone to move it (when the destination zone allows that widget — most widgets are zone-agnostic, but some are restricted to specific zones).
+- **Duplicate** via the widget's "•••" menu.
+- **Delete** via the widget's "•••" menu. Some widgets (PageContent, PostContent, SearchResults, NotFoundMessage, HomepageMain) are essential and can't be deleted from their Main zone — they're seeded on theme activation and always present.
+
+## Custom sidebars per template
+
+By default, both sidebars are shared across every template. You can opt one or both sidebars into per-template customization:
+
+1. Open a template (e.g. Single Post).
+2. In the toolbar above the schematic, find the **Custom sidebar** toggles for left and right.
+3. Toggle the side you want to customize.
+4. The sidebar's content now belongs to *this template only* — edits don't propagate.
+
+Use this when you want a different sidebar layout for one template (e.g. an author-specific sidebar on Author Profile, a "Topics" sidebar only on Topic Archives).
+
+## Save and publish
+
+Edits **auto-save** as you make them — there's no Save button. Drop a widget, edit its settings, switch to a different template — every change is persisted as you go.
+
+The active theme's builder edits go live on the public site immediately. The non-active theme's edits are persisted but don't affect the public site until activation.
+
+## Reset to defaults
+
+Per-template **Reset** button (top toolbar): wipes the current template's customizations and re-seeds it from the theme's default. The other templates and the shared chrome are unaffected.
+
+Theme-wide reset is under **Themes → \<theme\> → Reset all** in the theme list. Step-up auth required.
+
+## Preview
+
+Click **Preview** in the top toolbar of the builder. A new tab opens with the current page's public rendering — the same URL with `?preview=1`. Active or not, the preview tab shows what visitors would see if you flipped the active theme.
+
+## Template-specific tips
+
+- **Homepage** — the Main zone has a single essential widget called **Homepage Content**. It auto-renders either the chosen static page's body or a post listing, based on **Settings → Content → Homepage source**.
+- **Single Post / Pillar Post / Single Page** — Main contains an essential PostContent / PageContent widget. Other widgets you drop (e.g. Hero Title above PostTitle, AuthorMeta below PostContent) compose with it.
+- **404** — main contains an essential NotFoundMessage widget. Add SearchBox or PostsGrid for "we couldn't find that, try these" UX.
+- **Search Results** — Main contains an essential SearchResults widget. Add a Hero Title or intro text above it.
+- **Author Profile** — Main has author widgets (AuthorAvatar, AuthorName, AuthorBio, AuthorLinks) and a PostsGrid for the user's posts.
+
+## Tips
+
+- **Bookmark each template URL.** The builder URL contains the template id (`?template=single-post`) — bookmark the ones you customize often.
+- **The widget rail is searchable.** Type into the rail's search box to filter.
+- **Hover the schematic borders.** Zone borders are subtle by default but light up on hover so you can see exactly where a drop will land.
+- **Don't be afraid of resets.** Per-template reset is non-destructive to other templates. If you tinker yourself into a corner, reset and rebuild.

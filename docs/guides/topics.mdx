@@ -1,0 +1,92 @@
+---
+title: Topics
+description: Tag posts with topics, build topic archives, and organize your site by subject.
+---
+
+A **topic** is a tag you apply to a post. Each topic has its own archive page (`/topics/<slug>`) where every post tagged with it appears, newest first. Topics are how visitors browse your site by subject rather than by date.
+
+This guide covers how to create topics, tag posts with them, and customize how topic archives look.
+
+## When to use a topic
+
+Topics work best for **broad subject areas** — the kind of thing you'd see in a site nav. A travel blog might have "Europe", "Asia", "Tips". A dev blog might have "Next.js", "React", "Performance".
+
+If you need finer-grained labels (e.g. "Spain", "Italy" under "Europe"), use **pillars and spikes** instead — see [Pillars & spikes](/docs/guides/pillars-and-spikes).
+
+## Creating a topic
+
+1. **Topics** in the admin sidebar.
+2. **New topic** at the top right.
+3. Three fields:
+   - **Name** — display name (e.g. "Next.js"). Shown as the topic chip on post cards and as the `<h1>` of the archive page.
+   - **Slug** — URL segment. Auto-fills from the name.
+   - **Description** — optional. Shown at the top of the archive page below the topic name.
+4. Save.
+
+The topic now lives at `/topics/<slug>` (the archive shows "no posts yet" until you tag something with it).
+
+## Tagging posts with topics
+
+From the post editor's right rail, open the **Topics** panel. It's a multi-select — pick zero or more topics. There's no hard limit on how many you assign, but two or three is the practical sweet spot.
+
+You can also tag posts in bulk:
+
+1. **Posts → All posts**.
+2. Tick the posts you want.
+3. **Bulk actions → Change topics → Pick topics → Apply**.
+
+## Topic archives
+
+Every topic has a public archive at `/topics/<slug>`. The default `single-pillar`-aware template renders:
+
+1. The topic's **name** as the `<h1>`.
+2. The topic's **description** (if set) under the heading.
+3. A **list of posts** tagged with the topic, paginated (most-recent first).
+
+The post list reuses the same `PostListView` widget the homepage uses, so layout, thumbnail visibility, and pagination style all match the site-wide display settings (Settings → Content → Homepage display options).
+
+## Customizing the topic archive template
+
+If your theme exposes a **Topic archive** template (most do), open the theme builder under **Themes → \<your theme\> → Open builder → Topic archive** to customize what shows on `/topics/<slug>`. Common tweaks:
+
+- Add a hero image (Hero Title widget) above the post list.
+- Add a custom right sidebar for topic archives.
+- Insert an intro Rich Text block above the post list.
+- Change the post list layout (grid vs. list) via the PostListView widget settings.
+
+The change applies to every topic archive — there isn't per-topic template customization out of the box.
+
+## Featured posts per topic
+
+A common pattern: surface a "highlighted" post at the top of the topic archive. Two ways to do this:
+
+1. **Pinning via topic order.** Posts in the archive sort by `published_at` desc by default. To pin a post, edit it and bump its **Published at** to a future date — it'll always be the first item in feeds. (Caveat: this also changes the visible date on the post card.)
+2. **Pillars.** Convert the highlight post to a **pillar** for the topic. The pillar gets a distinct visual treatment on the archive and links to its spikes. See [Pillars & spikes](/docs/guides/pillars-and-spikes).
+
+## Deleting a topic
+
+From **Topics → All topics**, click the row's "•••" menu and pick **Delete**. NextPress checks how many posts are tagged with the topic before deleting:
+
+- **Zero posts** — clean delete.
+- **One or more posts** — you're asked to confirm. The posts stay; they just lose this one tag. Other tags on those posts are unaffected.
+
+After delete, the archive URL returns 404. NextPress doesn't auto-redirect deleted topic URLs (rare enough that we'd rather make it explicit).
+
+## Renaming a topic / changing its slug
+
+From the topic edit page, change the name or slug, then save. If the slug changes, NextPress auto-creates a 301 redirect from `/topics/<old>` to `/topics/<new>` — see [Redirects](/docs/site-admin/redirects).
+
+## Topic chips
+
+By default, the post archive's post cards and the post-meta line on `/post-slug` show a small "chip" with the post's first topic. You can hide the chip per-instance via the widget's **Show topic** toggle (in the theme builder), or globally via the homepage display options.
+
+## How the topic data flows
+
+For curious users: topics live in the `topics` table; the join table `post_topics` connects posts to topics. Every public-facing query (topic archive, post-meta chip, sitemap entry) reads from that join. There's no taxonomy hierarchy — topics are flat. If you need a hierarchy, that's what pillars/spikes are for.
+
+## Tips
+
+- **Keep the list short.** Sites with 50+ topics dilute the value of every individual archive page. Two dozen broad topics is a healthier ceiling.
+- **Slugs are URLs.** Pick slugs you can live with for years. Renaming is easy but the social shares pointing at the old URL won't update.
+- **Topics show in the sitemap.** Every topic archive with at least one published post is listed in `/sitemap.xml` automatically — no extra step.
+- **Don't reuse topic slugs as post slugs.** `/topics/foo` and `/foo` are separate routes, but the engine reserves slug words that conflict with the topic archive root (`topics`, `author`, `search`).

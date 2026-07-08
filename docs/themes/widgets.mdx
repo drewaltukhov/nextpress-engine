@@ -1,0 +1,186 @@
+---
+title: Widgets
+description: Every block you can drop into a theme zone — what each one does, what it reads, where it lives.
+---
+
+A **widget** is a draggable block in the theme builder. The builder's widget rail groups them into categories — **Template** (post/page/author content), **Sections** (visual hero/CTA-style blocks), **Media**, **Text**, **Layout**, **Site** (chrome).
+
+This page is the at-a-glance reference. For each widget: what it shows, which template zones it's eligible for, and the most-used settings.
+
+## Template category
+
+### Hero Title
+A full-bleed hero header with the post or page title overlaid on a background image. Optional avatar + author byline + date.
+
+| Setting | What it does |
+| --- | --- |
+| Background image | Falls back to the post's featured image when empty (post templates only). |
+| Image overlay | Color tint laid over the image so text reads. |
+| Heading level / alignment | `h1/h2/h3`, left/center/right. |
+| Author block | Show / hide the author. Pick display name vs. full name. Optional avatar + size + shape (original/circle). Optional `/author/<u>` link. |
+| Date | Show / hide; uses the site's display format and timezone. |
+| Colors | Per-element preset or custom hex for title / author / date. |
+| Rounded corners | `rounded-2xl` on the outer section. |
+| Vertical padding | Single rem value applied symmetrically. |
+
+### Page Title / Post Title
+Renders the page/post title as an `<h1>`. Reads from `metadata.page.title` / `metadata.post.title`.
+
+### Post Meta
+Author byline + published date + topic chips. Per-element toggles for each.
+
+### Featured Image
+The post's featured image as a standalone block. Pick aspect ratio (original / 16:9 / square) and rounded corners.
+
+### Page Content / Post Content
+The "body" placeholder. The active-theme renderer plugs the post/page's authored Puck body in here. **Essential** — present in every Single Page / Single Post / Pillar Post Main zone, can't be deleted.
+
+### Recent Posts
+A configurable grid or list of recent posts. Filter by topic, pillar, author, or "current scope" (uses whatever's in route context). Layout (grid / list / plain), thumbnail visibility, columns, aspect ratio, excerpt visibility, and pagination are all configurable.
+
+The **Show excerpt** toggle (default off) displays the post's excerpt text below the title in both list and grid layouts. Excerpts are written in the post editor's **Excerpt** panel (right rail, collapsed by default).
+
+### Table of Contents
+Auto-generated from the post body's heading hierarchy. Sticky-on-scroll option for long-form pillar pages.
+
+### Homepage Content
+The Main zone of the homepage template. Auto-renders either:
+- The chosen static page's body (when **Settings → Content → Homepage source** is set to a page), or
+- A list of recent posts (other source modes).
+
+Source picker and display options are global; edit them in **Settings → Content**. **Essential** — can't be deleted from the homepage's Main zone.
+
+### Topic Archive Header
+Header for `/topics/<slug>` archives — shows the topic name and description.
+
+### Search Results
+Renders the `/search` page's results list. **Essential** for the search-results template.
+
+### 404 Message
+Renders a customizable "page not found" message with optional CTA. **Essential** for the 404 template.
+
+### Breadcrumbs
+`Home → Section → Current page` navigation. Reads route context (post / page / topic / author) and builds the chain automatically.
+
+### Author widgets (AuthorAvatar / AuthorName / AuthorBio / AuthorLinks / Author)
+Per-piece widgets for the Author Profile template. AuthorAvatar renders the user's avatar with configurable size and shape; AuthorName renders the name; AuthorBio renders the bio; AuthorLinks renders the social-link icons; "Author" is the combined card with all of them stacked.
+
+## Sections
+
+Visual section blocks usable inside a page or post body, or in main zones of theme templates.
+
+| Widget | What it is |
+| --- | --- |
+| **Hero** | Full-bleed image with overlay text + CTA button. Layouts: image-on-top (overlay) or image-beside-text (side-by-side). |
+| **Banner** | Wide visual block, narrower than Hero. Optional headline overlay. |
+| **Button** | A call-to-action link styled as a button. Configurable color (primary / navy / white / light / custom hex) and target (same/new tab). |
+| **FAQ Section** | Question/answer accordion. |
+| **Table** | Tabular data with header row + body cells. |
+
+## Media
+
+| Widget | What it is |
+| --- | --- |
+| **Image** | A single image. Alt, caption, alignment, link. |
+| **Gallery** | A configured gallery from the media library. Layout (grid / carousel) and lightbox-on-click. |
+| **YouTube** | Embedded YouTube video by URL. Auto-extracts the video ID. |
+
+## Text
+
+| Widget | What it is |
+| --- | --- |
+| **Heading** | H1/H2/H3 inside a body. (Different from PageTitle/PostTitle, which read from metadata.) |
+| **Rich Text** | Body paragraphs with inline formatting, links, lists, blockquotes. Supports shortcodes (`[gallery]`, `[img]`, `[thumb]`). |
+| **Text** | Plain text block with a few site-token shortcodes (`[title]`, `[tagline]`, `[site]`, `[url]`). |
+
+## Layout
+
+Composition primitives for multi-column / spacing structure.
+
+### Layout
+Multi-column row. Pick a width recipe:
+
+| Variant | Track template |
+| --- | --- |
+| **100%** | Single column. |
+| **1/2 + 1/2** | Two equal columns. |
+| **1/3 + 1/3 + 1/3** | Three equal. |
+| **1/4 + 1/4 + 1/4 + 1/4** | Four equal. |
+| **1/4 + 1/2 + 1/4** | Sidebar / main / sidebar. |
+| **1/4 + 3/4** / **3/4 + 1/4** | Sidebar + wide column. |
+| **1/3 + 2/3** / **2/3 + 1/3** | Same with thirds. |
+| **auto + max + auto** | Outer columns shrink to content; middle floods. Header rows. |
+| **max + auto + auto** | Left floods; trailing columns are tight. Logo + nav + actions. |
+| **max + auto** | Two-column "title + action" row. |
+
+Per-column alignment + per-side padding configurable.
+
+### Spacer
+Vertical space between blocks. Pick a height in rem.
+
+### Separator
+Horizontal rule. Color preset or custom hex.
+
+### Sticky Container
+Wrap content that should stick to the top of the viewport on scroll. Useful for sidebars with a "current section" indicator, or a sticky CTA.
+
+## Site
+
+Chrome — same on every page.
+
+| Widget | What it is |
+| --- | --- |
+| **Site Logo** | The site's logo image, links to home. Falls back to text site title. |
+| **Search Box** | A search input that posts to `/search`. |
+| **Nav Menu** | A menu by slug — rendered as a horizontal nav or vertical list depending on parent layout. |
+| **Social Icons** | A row of social-link icons. Pull from Settings → Site identity. |
+
+## Newspaper
+
+Magazine-style widgets for editorial homepages and section pages. They server-render a post grid from a topic or pillar filter; some have client-side tab strips and prev/next pagination for browsing without a page reload.
+
+| Widget | What it is |
+| --- | --- |
+| **Newspaper Hero** | Dominant above-the-fold block — 1 large featured card + grid of smaller cards. Two layouts: side-by-side (featured left, 2×2 grid right) or stacked (featured on top, 2-column grid below). |
+| **Newspaper Section** | Single-scope section block — labeled header, 3-column card grid, prev/next pagination arrows. |
+| **Newspaper — Hero + Side List** | Section block with a featured card on the left and a list of thumbnail rows on the right. Supports a tab strip for switching between multiple pillars or topics. |
+| **Newspaper — Two Featured + Rows Grid** | Dense section block — two featured cards across the top, then a 2-column grid of list rows below. Also supports tab strips. |
+
+All four widgets share **Show date / author / topic chip / excerpt** toggles and **Display style** (Overlays: text on image with tint, or Cards: text below image).
+
+For full settings details, see [Newspaper widgets](/docs/themes/newspaper-widgets).
+
+## Where each widget can live
+
+The widget rail filters by surface — when you're editing **Single Post**, the rail only shows widgets that have declared themselves eligible for the `template-single-post` surface. So the rail is a curated list per template, not the full system inventory.
+
+| Surface | Typical widgets |
+| --- | --- |
+| Header | Layout, SiteLogo, NavMenu, SearchBox, SocialIcons |
+| Footer | Layout, NavMenu, SocialIcons, Text, Separator |
+| Sidebar | NavMenu, Recent Posts, TableOfContents, Text, StickyContainer, Newspaper Section |
+| Single Post / Pillar Post main | Hero Title, PostTitle, PostMeta, PostFeaturedImage, PostContent (essential), TableOfContents, Recent Posts |
+| Single Page main | Hero Title, PageTitle, PageContent (essential) |
+| Topic Archive main | Topic Archive Header, Recent Posts, Hero, Newspaper Section |
+| Search Results main | SearchResults (essential), SearchBox |
+| 404 main | NotFoundMessage (essential), SearchBox, Recent Posts |
+| Author Profile main | AuthorAvatar, AuthorName, AuthorBio, AuthorLinks, Recent Posts |
+| Homepage main | HomepageMain (essential), Hero, Recent Posts, Newspaper Hero, Newspaper Section, Newspaper — Hero + Side List, Newspaper — Two Featured + Rows Grid |
+
+## Essential widgets
+
+Some widgets are marked **essential** — they're pre-seeded into specific Main zones and can't be deleted from there:
+
+| Widget | Essential in |
+| --- | --- |
+| HomepageMain | Homepage Main |
+| PageContent | Single Page Main |
+| PostContent | Single Post Main, Pillar Post Main |
+| SearchResults | Search Results Main |
+| NotFoundMessage | 404 Main |
+
+They're hidden from the widget rail on the template where they're essential (no point dragging a second one in) and the per-instance toolbar's Delete is disabled. Other widgets can sit before and after them in the same Main zone freely.
+
+## Adding a new widget to your theme
+
+Custom widgets live in the theme's `themes/<slug>/blocks/` directory and register themselves via the cross-surface block registry. See [Developer → Plugin system → Theme widgets](/docs/developer/plugins/theme-widgets) for the contract.

@@ -1,0 +1,56 @@
+---
+title: Hide Admin
+description: Move the admin login off the predictable /admin path to a secret slug.
+---
+
+By default the admin lives at `/admin`. **Hide Admin** lets you move it to a secret path of your choosing — anyone who hits `/admin` (or guesses wrong) gets a flat 404. It's security through obscurity: a cheap way to keep automated `/admin` and `/wp-admin` probes from ever finding a login form. It is **not** a replacement for strong passwords, [lockout](/docs/security/lockout), or [IP blocking](/docs/security/ip-blocking) — layer it on top of them.
+
+## Turning it on
+
+Go to **Plugins → Hide Admin** (`/admin/plugins/hide-admin`).
+
+1. Enter a path in the slug field — for example `/control-panel-7q2`.
+2. Click **Enable hiding**.
+
+From then on:
+
+- Your secret path shows the login screen.
+- The old `/admin` and `/admin/login` return **404** to anyone not signed in.
+- Once you're signed in, the rest of the admin (`/admin/...`) works normally — only the *entry point* moves.
+
+To change the path later, type a new one and **Update path**. To switch the feature off, use **Clear / disable** (a confirmation is required).
+
+## Slug rules
+
+A valid path is `/` followed by 3–32 characters: it must start with a lowercase letter, and the rest can be lowercase letters, numbers, hyphens, or underscores (`/^\/[a-z][a-z0-9_-]{2,31}$/`).
+
+The path also can't:
+
+- use a reserved route (`/admin`, `/api`, `/_next`, `/docs`, `/setup`, `/login`, `/blog`, `/sitemap.xml`, `/robots.txt`, `/favicon.ico`), or
+- collide with an existing page slug or redirect. The form tells you exactly what it clashed with so you can pick another.
+
+<Callout type="warn">
+Pick something you'll remember but an attacker won't guess. A real word like `/dashboard` defeats the purpose; a short random suffix like `/studio-9fk2` is the sweet spot.
+</Callout>
+
+## If you forget the path
+
+There's a built-in escape hatch that doesn't need database access. Set an environment variable and restart:
+
+```bash
+NEXTPRESS_ADMIN_PATH=/admin
+```
+
+On Vercel, add it under **Settings → Environment Variables** and redeploy; locally, drop it in `.env.local` and restart. The environment variable always wins over the saved setting, so `/admin` becomes reachable again. Sign in, go back to **Plugins → Hide Admin**, set the path you want (or disable hiding), then remove the env var and redeploy.
+
+When the env override is active the settings page shows a banner and locks the field, so you always know which value is in effect.
+
+## What still works while hidden
+
+A few unauthenticated routes stay reachable by design so you're never locked out of recovery:
+
+- `/admin/forgot-password` and `/admin/reset-password`
+- `/admin/confirm-email`
+- `/admin/setup` (until first-run setup is complete)
+
+Everything else under `/admin` returns 404 until you sign in at your secret path. Changes to the hidden path are recorded in the [activity log](/docs/security/logs).

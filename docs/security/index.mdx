@@ -1,0 +1,40 @@
+---
+title: Security Overview
+description: NextPress security architecture — defense in depth from login to admin actions.
+---
+
+Security in NextPress isn't an add-on. It's built into the core engine at every layer.
+
+## Defense layers
+
+| Layer | Protection |
+|-------|------------|
+| **Login** | Timing-safe authentication, argon2id hashing, zxcvbn strength enforcement |
+| **Account** | Per-email lockout after repeated failures |
+| **Network** | IP auto-blocking, CIDR allowlists, per-token IP restrictions |
+| **Session** | JWT with configurable expiry, session revocation on security events |
+| **Admin actions** | Step-up auth (password re-entry) for destructive operations |
+| **Data** | AES-256-GCM encryption for secrets, PII redaction in logs, append-only audit trail |
+
+## What ships in core
+
+- **Account lockout** — 5 failed logins in 15 minutes locks the account for 30 minutes (configurable)
+- **IP auto-blocking** — 20 failures from one IP in 30 minutes blocks it for 60 minutes
+- **CIDR allow list** — whitelist office IPs, VPNs, partner networks
+- **CIDR block list** — manual blocks with timed or permanent expiry
+- **Country filter** — geoip-lite-backed allowlist or denylist of ISO-3166 codes, enforced on the auth path
+- **Step-up auth** — destructive actions require password re-entry (5-minute window, configurable)
+- **Audit logging** — every sensitive action logged with actor, target, IP, and diff
+- **Secret redaction** — PII patterns automatically masked before they hit the log tables
+- **Timing-safe auth** — dummy argon2 verification on unknown-email paths prevents enumeration
+
+## Where to manage it
+
+The admin UI is split across two pages:
+
+- **`/admin/security`** — Allow List, Deny List, Countries, and Settings (lockout + session/step-up knobs)
+- **`/admin/logs`** — Operations (audit log), Sessions (revocations + recent logins), Logins (failed logins with row-level Ban-IP and Ban-country actions), and Settings (retention + redaction)
+
+## What you don't need to install
+
+Unlike WordPress where you bolt on Wordfence or Sucuri after the fact, NextPress ships all of the above in the `security` and `logging` core plugins. They load as essential-tier — meaning they stay active even when other plugins fail.

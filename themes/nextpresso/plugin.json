@@ -1,0 +1,15 @@
+{
+  "slug": "nextpresso",
+  "name": "NextPresso",
+  "version": "1.0.0",
+  "engine": "^1.0.0",
+  "type": "theme",
+  "tier": "essential",
+  "dependencies": ["themes", "menus", "settings", "media"],
+  "capabilities": {
+    "registers_admin_menu": false,
+    "registers_routes": false,
+    "exposes_hooks": []
+  },
+  "author": "NextPress"
+}

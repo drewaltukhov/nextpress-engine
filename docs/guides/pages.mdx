@@ -1,0 +1,125 @@
+---
+title: Pages
+description: Build About, Contact, Privacy — any standalone page that doesn't belong to a blog feed.
+---
+
+A **page** is a standalone piece of content that lives at the top level of your site (`/about`, `/contact`, `/privacy`, etc.). Pages aren't part of any post feed and don't carry a publication date — they're "evergreen" content that exists on its own URL.
+
+This guide covers everything you can do with pages.
+
+## When to use a page vs. a post
+
+| Use a **page** when... | Use a **post** when... |
+| --- | --- |
+| The content stands alone (About, Privacy, Pricing) | The content is part of a stream (articles, blog posts, news) |
+| You want a clean root URL (`/about`) | You want it in the RSS feed |
+| It rarely changes once published | It has a publication date that matters |
+| You won't tag it with topics | You'll group it with other posts by topic |
+
+If you're not sure, default to **post**.
+
+## Creating a page
+
+1. Open the admin and click **Pages → All pages** in the sidebar.
+2. Hit **New page** at the top right.
+3. You land in the page editor. Three things to fill in:
+   - **Title** at the top — what appears as the `<h1>` and the `<title>` meta tag by default.
+   - **Slug** in the right rail — auto-fills from the title. Edit it before publishing if you want a different URL.
+   - **Body** — drag-and-drop blocks from the right rail or type directly into the content area.
+4. Click **Publish** in the top-right toolbar.
+
+Visit `/<your-slug>` to see the live page. The URL is exactly the slug — pages don't have a `/pages/` prefix.
+
+## The page editor
+
+The editor is built on Puck (the block-based composition library). The right rail has two modes:
+
+- **Widgets** — the catalog of block types you can drag into the body. Sectioned by category (Template, Sections, Media, Text, Layout, Site).
+- **Inspector** — appears when you click a block in the body. Shows that block's settings (alignment, colors, padding, anything block-specific).
+
+Toggle between modes via the chevrons at the top of the rail.
+
+### Common blocks for pages
+
+| Block | What it's for |
+| --- | --- |
+| **Heading** | Section headers inside the page body. Pick H1/H2/H3. |
+| **Rich Text** | Body paragraphs. Inline formatting, links, lists, blockquotes. |
+| **Image** | A single image. Supports alt text, link, alignment. |
+| **Gallery** | Multiple images in a grid or carousel. See [Media](/docs/guides/media). |
+| **Button** | A call-to-action link styled as a button. |
+| **Layout** | Multi-column rows. Pick a width recipe (halves, thirds, max + auto, etc.). |
+| **Hero** | Full-bleed image with overlay text + CTA. |
+| **FAQ Section** | Question / answer accordion. |
+| **Banner** | Wide visual block with optional text overlay. |
+| **Spacer** | Vertical space between blocks. |
+| **Separator** | Horizontal rule. |
+| **YouTube** | Embedded video by URL. |
+| **Table** | Tabular data with header row + cells. |
+
+The catalog is themed — your active theme might expose extra blocks specific to its layouts.
+
+## Right-rail panels
+
+When a page is open in the editor (no block selected), the right rail shows page-level settings:
+
+### SEO
+
+- **SEO title** — overrides the page title in `<title>` and the OG tag. Leave blank to use the page title.
+- **SEO description** — the `<meta name="description">`. Falls back to the page excerpt if set, then to the first paragraph of the body.
+- **OG image** — the Open Graph preview image used when the page is shared on social platforms.
+- **Canonical URL** — overrides the canonical link tag. Use this if the same content lives at multiple URLs and you want one to win.
+- **Robots** — controls the `<meta name="robots">` tag. Pick from `index,follow` (default), `noindex`, `nofollow`, `noindex,nofollow`.
+- **Exclude from sitemap** — tick this if you want the page accessible but not listed in `/sitemap.xml`.
+
+### Schema
+
+For pages where structured data matters (Privacy, Contact, FAQ), pick one or more schema types from the **Schema** panel. NextPress emits a JSON-LD block in the page head that matches the chosen type. See [SEO](/docs/site-admin/seo).
+
+### Excerpt
+
+A short summary used in OG / RSS / social cards when no SEO description is set. Plain text only.
+
+### Template
+
+Most sites use the built-in `single-page` template. If your theme defines custom page templates (e.g. "Wide hero", "Landing"), pick one here. See [Themes](/docs/themes).
+
+## Drafts and publishing
+
+A page has three states:
+
+| State | Meaning |
+| --- | --- |
+| **Draft** | Saved but not on the public site. Returns 404 to anonymous visitors. Signed-in admins can preview. |
+| **Published** | Live on the public site at the slug. |
+| **Scheduled** | Published automatically at a future date. Acts as a draft until then. |
+
+You can switch states from the **Publish** button menu in the top-right.
+
+## Editing an existing page
+
+From **Pages → All pages**:
+
+- **Click the title** to open the editor.
+- **Click the row's "•••" menu** for quick actions: duplicate, move to trash, change status.
+
+The list supports search (title and slug), filtering by status, and bulk actions.
+
+## Trash and restore
+
+Deleted pages go to the trash, not the void. From **Pages → All pages**, switch the view to **Trash** to see deleted pages. From there you can:
+
+- **Restore** — bring it back as a draft.
+- **Delete permanently** — irreversible.
+
+## Changing a page's slug after publishing
+
+When you change a published page's slug, NextPress automatically creates a 301 redirect from the old slug to the new one. So `/old-about → /new-about` is wired up for you — no manual redirect needed.
+
+If you want to opt out of the auto-redirect (rare), edit the redirect under **Site admin → Redirects** after the change.
+
+## Tips
+
+- **Use the page title for SEO, not the H1 inside the body.** The active theme renders the page title as the page's `<h1>` automatically (via the `PageTitle` widget). Adding another H1 in the body breaks the heading hierarchy.
+- **Set an OG image** for every page that gets shared on social. The OG meta tag is what controls the preview card; the page's hero image isn't used unless you explicitly set it as the OG image.
+- **Pages don't have a published date by default.** If you need one (e.g. "Last updated: …"), put it in the body — the public renderer doesn't surface page dates anywhere.

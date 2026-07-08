@@ -1,0 +1,18 @@
+---
+title: Configuration
+description: The settings registry — NextPress's typed, validated, encrypted key/value store.
+---
+
+NextPress has one canonical place for every site-wide setting: the **settings registry**. Plugins register their settings up front with a Zod schema and an optional encryption flag; the rest of the codebase reads and writes them through a typed API; the admin UI auto-renders the forms.
+
+This is the developer-facing side. If you're a site owner looking to *change* a setting, you'll do it via the admin UI under **Settings** — no code required.
+
+- [Settings registry](/docs/developer/configuration/settings-registry) — the full registration API, validation, encryption, and how plugins expose settings to the admin form
+
+## Other configuration topics
+
+Three configuration topics are end-user tasks rather than dev tasks; they live under [Site admin](/docs/site-admin):
+
+- [SEO](/docs/site-admin/seo) — sitemaps, robots, OG defaults
+- [Redirects](/docs/site-admin/redirects) — 301/302 management
+- [Backups](/docs/site-admin/backup-restore) — exporting / restoring the database

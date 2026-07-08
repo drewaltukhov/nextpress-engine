@@ -1,0 +1,5 @@
+{
+  "title": "Themes",
+  "description": "Picking, activating, and customizing how the site looks.",
+  "pages": ["index", "activating", "theme-builder", "widgets", "newspaper-widgets", "customizing"]
+}

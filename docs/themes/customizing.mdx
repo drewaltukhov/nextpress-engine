@@ -1,0 +1,146 @@
+---
+title: Customizing
+description: Per-theme settings, custom templates, exporting and importing theme data.
+---
+
+Once you've activated a theme and arranged its templates in the [theme builder](/docs/themes/theme-builder), the remaining customization surface is **per-theme settings** (colors, fonts, logo, layout overrides) and **custom templates** (theme variants for specific pages).
+
+## Per-theme settings
+
+Every theme owns its own settings namespace. Open **Themes → \<theme\> → Settings** to see what the active theme exposes.
+
+A typical theme exposes:
+
+| Setting | What it controls |
+| --- | --- |
+| **Header logo** | The image (or SVG) rendered in the header. Picked from the media library. Falls back to the site title as text when unset. |
+| **Logo height** | Height of the header logo in pixels. The width auto-scales. |
+| **Favicon** | The browser-tab icon. Stored as a data URL on the theme so it survives storage-backend swaps. |
+| **Color tokens** | The theme's brand palette. Usually a handful of named colors (primary, secondary, accent, surface) exposed to templates as CSS custom properties. |
+| **Display font** | The font used for headings, titles, and other display surfaces. Picked from a curated list the theme ships with. |
+| **Body font** | The font used for body prose. |
+| **Layout defaults** | Theme-specific knobs like "sidebar width", "max content width", "show breadcrumbs by default". |
+
+Each theme decides which fields to expose. The NextPresso default theme has roughly a dozen settings; richer themes can have many more.
+
+Changes save on every interaction — no Save button.
+
+## Custom templates
+
+Beyond the eight built-in template surfaces (Homepage, Single Page, Single Post, Pillar Post, Topic Archive, Search Results, Author Profile, 404), you can create **custom templates** for specific pages or post types.
+
+A custom template is a variant of a built-in template. Example use cases:
+
+- A **Landing page** variant of Single Page for marketing pages (no header / no footer / full-bleed).
+- A **Long-form** variant of Single Post for tutorial pages (table-of-contents sidebar, wider content column).
+- An **Author Profile** variant for a specific contributor with a custom intro section.
+
+### Creating a custom template
+
+1. **Themes → \<theme\> → Open builder**.
+2. In the template tabs, click **+ New template**.
+3. Pick the **parent template** (the built-in template the variant is based on).
+4. Name it (e.g. "Landing").
+5. The builder opens with the parent template's content as the starting point. Edit freely.
+
+### Assigning a custom template
+
+Once the template exists:
+
+1. Edit a page or post.
+2. In the right rail, find the **Template** field.
+3. Pick the custom template from the dropdown.
+
+The page now renders with the custom template instead of the parent.
+
+### Custom templates and the public renderer
+
+When the public renderer needs to render `/<page-slug>` and the page has `template: "landing"`:
+
+1. Look up the `landing` theme_data row.
+2. If found, render with its puckData.
+3. If not found (e.g. the template was deleted), fall back to the parent template.
+
+The fallback means deleting a custom template won't break pages assigned to it — they revert to the parent's rendering.
+
+## Exporting and importing theme data
+
+For sites with significant customization, it's useful to develop in one environment and deploy to another. The theme data export/import flow lets you move customizations between sites.
+
+### Exporting
+
+**Themes → \<theme\> → "•••" → Export theme data**.
+
+You get a JSON file containing every theme_data row for that theme: shared parts (header, footer, sidebars), templates (Homepage, Single Page, etc.), and custom templates. The file does NOT include site content (posts, pages, media) — only the theme arrangement.
+
+### Importing
+
+**Themes → \<theme\> → "•••" → Import theme data → pick file**.
+
+NextPress validates the file (theme slug matches, schema version compatible) and shows a confirmation diff: which templates and parts would be replaced. After confirming, the import overwrites the current theme data wholesale.
+
+Step-up auth required (it's a destructive operation if you've customized the destination).
+
+### Use case: dev → prod
+
+1. In dev, finish your theme customizations.
+2. Export the theme data.
+3. Activate the theme in prod (clones the theme's defaults).
+4. Import the dev export. Your dev customizations are now in prod.
+
+### Use case: backup before a big change
+
+Always export before doing destructive editing or running `Reset all`. The export is a small JSON file — version it in a private gist or git repo for instant rollback.
+
+## Theme-specific CSS
+
+Themes can ship their own CSS for in-template styling that goes beyond what widget settings cover. By convention, theme CSS lives at `themes/<slug>/styles/theme.css` and is imported by the theme's template files.
+
+The built-in NextPresso theme exposes a small set of `.np-*` utility classes its widgets use; custom themes are free to define whatever they need. Theme CSS isn't editable via the admin — it ships in the theme's source files.
+
+## Color tokens
+
+Most themes expose their color palette as CSS custom properties at the `:root` level, named something like:
+
+```
+--theme-primary: #2A3A5B;
+--theme-accent:  #2B944F;
+--theme-surface: #ffffff;
+```
+
+The values are read from the per-theme settings, so changing **Themes → Settings → Primary color** updates the CSS variable, which updates every template using that token.
+
+Widgets that opt into theme tokens (rather than hardcoding their own colors) automatically follow the palette change. The NextPresso defaults do this; custom themes vary.
+
+## Fonts
+
+Themes ship a curated font list. Picking a font in the theme settings:
+
+1. Sets the per-theme `display_font` / `body_font` setting.
+2. Triggers the theme to emit the appropriate `<link rel="preconnect">` and `<link href="...">` tags in the head.
+3. Updates the `--theme-display` / `--theme-body` CSS variables.
+
+Most themes use Google Fonts; some support self-hosted variable fonts. The list is theme-defined; you can't pick an arbitrary font that isn't in the theme's manifest from the UI.
+
+## Resetting a theme
+
+**Themes → \<theme\> → "•••" → Reset all**: wipes every theme_data row for the theme and re-seeds defaults from the theme's source files. Per-theme settings are also reset.
+
+Use the export feature first if there's anything you might want back.
+
+## Versioning theme data
+
+NextPress doesn't ship a built-in versioning UI for theme data, but the export file is a perfectly good versioning unit:
+
+1. Before a big theme edit, export.
+2. Commit the export to a private gist or git repo (it's small, plain JSON).
+3. If you want to roll back, import the older version.
+
+A dedicated theme-data revisions feature is in the long-term backlog.
+
+## Tips
+
+- **Test in preview before activating.** For an unactivated theme, use the **Preview** button on the theme card — it renders public routes with the in-progress theme while leaving the live site alone.
+- **Settings save instantly.** There's no Save button; closing the tab won't lose changes. But there's also no undo — if you change a color and immediately want the old value back, you have to remember it.
+- **Export before destructive changes.** "Reset all" and "Import theme data" are both destructive. Export first.
+- **Keep custom templates few.** Two or three custom templates is plenty for most sites — beyond that, editorial coordination ("which template do I assign?") gets fiddly.

@@ -1,0 +1,86 @@
+---
+title: API Tokens
+description: Create, manage, and revoke API tokens for programmatic access.
+---
+
+## Token format
+
+NextPress API tokens follow the format:
+
+```
+npp_<32-random-bytes-base64url>
+```
+
+- Prefix `npp_` identifies NextPress tokens (useful for secret scanning)
+- 32 cryptographically random bytes, base64url-encoded
+- Total length: ~48 characters
+
+## Creating a token
+
+Tokens are created through the admin UI at `/admin/api-tokens`. During creation you configure:
+
+| Setting | Description |
+|---------|-------------|
+| **Name** | Human-readable label (e.g. "CI deploy", "Cuppa integration") |
+| **Scopes** | Which operations the token can perform |
+| **Allowed origins** | Optional CIDR blocks to restrict which IPs can use the token |
+| **Rate limit** | Requests per minute (blank = site default of 60) |
+| **Expiration** | When the token stops working (never, 30d, 90d, 365d, or custom) |
+
+<Callout type="warn">
+The full token is shown **exactly once** at creation time. Copy it immediately — it cannot be retrieved later. Only a SHA-256 hash is stored in the database.
+</Callout>
+
+## Available scopes
+
+| Scope | Description |
+|-------|-------------|
+| `posts:read` | Read all posts |
+| `posts:write` | Create and update posts |
+| `posts:delete` | Delete posts |
+| `media:read` | Read media metadata |
+| `media:upload` | Upload media files |
+| `media:delete` | Delete media files |
+| `taxonomies:read` | Read terms and taxonomies |
+| `taxonomies:write` | Create and update terms |
+| `forms:read` | Read form submissions |
+| `*` | Full access (admin-only) |
+
+## CIDR allowlist
+
+Each token can optionally restrict which IP addresses may use it:
+
+```
+203.0.113.0/24       — entire /24 subnet
+10.0.0.5/32          — single host
+```
+
+If `allowed_origins` is empty or null, the token works from any IP.
+
+## Revoking a token
+
+Revoked tokens immediately stop working. Revocation is a soft-delete — the token row is preserved with a `revoked_at` timestamp and optional reason for the audit trail.
+
+Revoking a token requires **step-up authentication** (password re-entry) for security.
+
+## Token introspection
+
+Any valid token can call `GET /api/v1/me` to verify itself:
+
+```bash
+curl -H "Authorization: Bearer npp_..." https://your-site.com/api/v1/me
+```
+
+Response:
+
+```json
+{
+  "data": {
+    "user_id": "uuid-here",
+    "scopes": ["posts:read", "media:upload"],
+    "prefix": "npp_a3f9",
+    "name": "CI token",
+    "expires_at": null
+  }
+}
+```

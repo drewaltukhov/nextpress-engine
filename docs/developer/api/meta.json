@@ -1,0 +1,13 @@
+{
+  "title": "API Reference",
+  "pages": [
+    "index",
+    "authentication",
+    "tokens",
+    "managing-tokens",
+    "rate-limiting",
+    "endpoints",
+    "posts",
+    "media"
+  ]
+}

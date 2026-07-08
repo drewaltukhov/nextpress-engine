@@ -1,0 +1,206 @@
+---
+title: Media library
+description: Upload, organize, embed, and manage every image and file on your site.
+---
+
+The media library is the central place where every image, document, and other binary asset lives. Every post body image, page hero, theme logo, and gallery comes from the same library — there's no per-post upload silo.
+
+## What the library stores
+
+| Type | What it's for | Stored as |
+| --- | --- | --- |
+| **Images** | Post bodies, page heroes, featured images, OG previews, galleries | The image file + auto-generated metadata (dimensions, MIME, alt text) |
+| **Documents** | PDF downloads, attachments | The file as a link target |
+| **Other binary files** | Anything you can upload (zip, csv, etc.) | Same — the library doesn't transform non-images |
+
+Images get extracted dimensions and an OCR-free "perceptual hash" so duplicate uploads of the same image are flagged.
+
+## Uploading
+
+Three ways into the library:
+
+1. **Direct upload.** Open **Media** in the admin sidebar. Drag files onto the page, or use **Upload → Pick files**. Multi-file drops are supported.
+2. **From the picker.** Most editor surfaces (Image block, Hero background, Featured image) have a media picker dialog with an **Upload** tab. Files uploaded there land in the same library.
+3. **From a URL.** Use **Upload → From URL** in the library — paste any HTTP(S) image URL, the engine fetches it and stores a local copy. Useful for migrating images that currently live on a third-party host.
+
+Uploads run through the active storage backend chosen in **Media → Settings → Storage backend**. NextPress ships with two:
+
+- **Database** — bytes are stored directly in the `media` table's blob columns. The default; always available; no extra configuration required.
+- **Cloudflare R2** — bytes are uploaded to your R2 bucket and served from `NEXT_PUBLIC_R2_PUBLIC_URL`. Requires the five `R2_*` env vars to be set; the option is shaded in the UI when they aren't.
+
+Per-row backend storage means flipping the toggle only affects *new* uploads — existing files keep serving from whichever backend wrote them. There's also a built-in migration tool (Settings → Media → **Storage migration**) that moves files between backends in batches with a live progress bar; see *Migrating between backends* below.
+
+### Supported MIME types
+
+NextPress accepts these by default. Plugins or settings can extend the list.
+
+| Family | Types |
+| --- | --- |
+| Images | `image/jpeg`, `image/png`, `image/webp`, `image/avif`, `image/gif`, `image/svg+xml` |
+| Documents | `application/pdf` |
+| Archives | `application/zip` |
+| Text | `text/csv`, `text/plain` |
+
+SVG uploads are sanitized server-side — embedded `<script>` and event handlers are stripped before storage.
+
+## Browsing the library
+
+The library page shows a grid of every media item with thumbnails. Filters across the top:
+
+- **Search** — by filename, caption, or alt text.
+- **Type** — Images / Documents / Other.
+- **Date range** — by upload date.
+- **Uploader** — by user.
+
+Switch to **List view** for a denser table with size, dimensions, and "where it's used" links.
+
+## Editing an item
+
+Click a thumbnail to open the item drawer. Editable fields:
+
+| Field | What it's for |
+| --- | --- |
+| **Filename** | Internal name (used as the URL suffix). Renaming creates a redirect from the old URL. |
+| **Alt text** | Accessible description for screen readers; also used by SEO when an image is the post's featured image. |
+| **Caption** | Optional caption shown beneath the image in some blocks (Image block, gallery). |
+| **Title** | Optional. Surfaced in the picker so editors can search by friendly name rather than filename. |
+
+The drawer also shows:
+
+- **Dimensions** and **file size**.
+- **MIME type**.
+- **Uploaded by** + **uploaded at**.
+- **Where it's used** — every post, page, gallery, or theme setting referencing this item, with quick links. Use this before deleting an item to check what breaks.
+
+## Galleries
+
+Beyond single images, the library supports **galleries** — named collections of images you can embed in any post or page. From **Media → Galleries**:
+
+1. **New gallery → name it**.
+2. Drag images from the library into the gallery, or upload directly into it.
+3. **Save**.
+
+In a post or page body, drop a **Gallery** block and pick the gallery from the picker. You can configure layout (grid columns, carousel, lightbox-on-click) per block instance.
+
+For inline embedding without using a block, use the shortcode in a Rich Text block:
+
+```
+[gallery id="12"]
+```
+
+The renderer expands it to a full gallery using the layout from the gallery's defaults.
+
+## Embedding images in posts
+
+Three ways, depending on what you want:
+
+| Use this | When |
+| --- | --- |
+| **Image block** | Most cases — single image with optional caption, alignment, and link. |
+| **Gallery block** | Multi-image grid or carousel. |
+| `[img id="34"]` shortcode inside Rich Text | Inline image inside a paragraph. |
+| `[thumb id="34"]` shortcode inside Rich Text | Inline thumbnail with a lightbox on click. |
+
+The shortcode form is convenient when you're typing a body and want an image right where the cursor is, without leaving the inline editor. The block form is better when the image is a standalone visual element with surrounding spacing.
+
+## Featured image
+
+The featured image isn't a body block — it's a post/page property you set in the right rail of the editor. The active theme decides where to render it (post archive thumbnail, post header hero, OG image fallback, etc.).
+
+See [Posts → featured image](/docs/guides/posts#featured-image).
+
+## Replacing an existing image
+
+To replace an image everywhere it's used:
+
+1. Open the item in the library.
+2. Click **Replace file** in the drawer.
+3. Pick the new file. NextPress keeps the same media ID, alt text, caption — only the bytes (and dimensions) change.
+
+The old file is overwritten in storage. Every reference (posts, galleries, theme settings) now points at the new image automatically. There's no "old URL" floating around — same URL, new bytes.
+
+## Deleting
+
+Click **Delete** in the item drawer. NextPress checks usage before letting you confirm:
+
+- **Unused** — clean delete. File is removed from storage.
+- **In use** — you get a list of every post/page/gallery referencing the item. You can:
+  - **Cancel** and remove the references first.
+  - **Force delete**. References to the deleted item show a "missing image" placeholder on the public site.
+
+## Bulk actions
+
+From the library list, tick multiple items for bulk options:
+
+- **Bulk delete** (same usage check).
+- **Bulk re-tag** (assign alt text or captions in bulk).
+- **Bulk move to gallery** — add the selection to an existing gallery.
+
+## Image processing on upload
+
+Every raster upload runs through the same pipeline before it lands in storage:
+
+1. **JPEG / BMP → WebP**, quality 90. Off by default for the rare case where you want the original; toggle in **Settings → Media → Auto-convert JPEG/BMP to WebP**.
+2. **Longest-edge resize to 1920px**. Originals bigger than that are scaled down preserving aspect ratio; smaller files pass through untouched. EXIF orientation is honoured. 1920px sits at the floor for crisp retina display at typical blog content widths and caps storage growth.
+3. **600px thumbnail generation**. A WebP thumb (max-width 600px, quality 75) is generated alongside the resized original and stored on the row. SVG is skipped — vector content has nothing to resample.
+
+SVG uploads are also sanitized server-side: embedded `<script>` and event handlers are stripped before storage.
+
+### Where each variant gets served
+
+NextPress automatically picks the right variant per render surface:
+
+| Surface | Variant |
+|---|---|
+| Library grid + admin gallery thumbnails | 600px thumb |
+| Post cards (recent / search / archive grid) | 600px thumb |
+| Public-page featured image (inline render) | 600px thumb |
+| Gallery carousel inline slide | 600px thumb |
+| Gallery grid tile | 600px thumb |
+| Hero / banner backgrounds | Full original (≤ 1920px) |
+| Lightbox click-to-zoom | Full original |
+| og:image / JSON-LD metadata | Full original |
+
+All public URLs use the same `/media/<id>(/thumb)` form regardless of backend — the route handlers dispatch internally to serve DB bytes inline or 302-redirect to R2. A short `?v=<hash>` cache-busting query is appended so storage migrations propagate without requiring viewers to hard-refresh.
+
+## Storage backends
+
+NextPress ships two storage backends and a one-click migration between them.
+
+### Database (default)
+
+Bytes live in the `media` table's `blob_data` / `thumb_data` BLOB columns. Always available; no extra configuration. Fine for personal sites with low-to-moderate traffic. Drawbacks at scale: DB size grows quickly with large images, and every public render serves through your serverless function rather than a CDN.
+
+### Cloudflare R2
+
+Bytes are uploaded to your R2 bucket and served from a public domain via `NEXT_PUBLIC_R2_PUBLIC_URL`. The R2 path is the right call when you're serving lots of featured images on a Vercel deployment — public URLs are CDN-friendly, so featured-image bandwidth doesn't go through your serverless function.
+
+Required env vars (set in `.env.local` or your Vercel project settings):
+
+```
+R2_ACCOUNT_ID            # your Cloudflare account ID
+R2_ACCESS_KEY_ID         # R2 API token, Object Read & Write
+R2_SECRET_ACCESS_KEY     # paired secret (wrap in "" if it contains #)
+R2_BUCKET_NAME           # target bucket name
+NEXT_PUBLIC_R2_PUBLIC_URL  # https://pub-*.r2.dev or your custom domain
+```
+
+When all five are set, the R2 row in **Settings → Media → Storage backend** is selectable. Existing rows always serve from whichever backend wrote them — flipping the toggle only redirects *new* uploads.
+
+### Migrating between backends
+
+**Settings → Media → Storage migration** moves existing files from one backend to the other:
+
+- Two buttons: **Move to R2** and **Move back to database**, each prefaced with the file count + total size that would move.
+- A progress bar fills as the migration runs in small batches; the just-moved filename appears below the bar.
+- Per-row failures (network blip, missing bytes, etc.) collect into an amber callout — the run keeps going past transient errors.
+- The migration is **stoppable** mid-run; remaining files stay on their original backend and are picked up next time.
+
+DB→R2 migration uploads bytes to R2, then `UPDATE`s the row to point at the R2 key and `NULL`s out the inline blob. R2→DB does the reverse — fetches the bytes back, writes them to the row's blob columns, verifies the write landed at the expected byte size, and only then deletes the R2 objects. The verification step protects against silent driver-level failures that would otherwise orphan the only copy of a file.
+
+## Tips
+
+- **Always fill alt text.** Used as a fallback in OG card descriptions and image search. The library shows a small badge on items missing alt text so you can find them.
+- **Don't pre-compress JPEGs.** NextPress's auto-convert-to-WebP + 1920px resize already handle the heavy lifting. Manually compressing before upload double-encodes and tends to look worse than the engine's single pass.
+- **SVGs are sanitized but still inspect them.** Sanitization strips scripts but doesn't validate visual correctness. Test SVG icons in the preview before publishing.
+- **R2 is friction-free to add later.** Existing DB rows keep working forever; nothing in your post bodies, themes, or feeds points at backend-specific URLs.

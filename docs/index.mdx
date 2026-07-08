@@ -1,0 +1,111 @@
+---
+title: Welcome to NextPress
+description: The publishing engine you run yourself. Posts, pages, topics, themes — without the WordPress baggage.
+---
+
+NextPress is a modern publishing engine for people who want a real CMS without the legacy weight. If you've used WordPress, you already know how it thinks — posts, topics, plugins, themes — except every piece is type-safe, server-first, and built on Next.js.
+
+> **New here?** Jump straight to [Getting started](/docs/getting-started) — installation, the first-run wizard, and your first post in under ten minutes.
+
+## What you can build
+
+<div className="np-card-grid">
+
+<div className="np-card">
+  <strong className="np-card-title">Blogs &amp; publications</strong>
+  <p>Posts, topics, pillars, author profiles, RSS, full-text search. The defaults work; the customization is there when you need it.</p>
+</div>
+
+<div className="np-card">
+  <strong className="np-card-title">Brochure sites</strong>
+  <p>Pages with rich block-based bodies, drag-and-drop hero sections, galleries, FAQ accordions. Sales pages, About / Contact / Privacy — no theme switching required.</p>
+</div>
+
+<div className="np-card">
+  <strong className="np-card-title">Content hubs</strong>
+  <p>Pillar-and-spike content structure for topical clusters. One overview post, many focused sub-posts, all linked automatically.</p>
+</div>
+
+<div className="np-card">
+  <strong className="np-card-title">Headless backends</strong>
+  <p>REST API for headless consumers (mobile apps, JAMstack frontends). Auth, rate limiting, and per-token IP allowlists ship in core.</p>
+</div>
+
+</div>
+
+## Where to start
+
+The docs are organized by what you're doing, not by what you're building. Pick the section that matches your task.
+
+<div className="np-card-grid">
+
+<a className="np-card np-card--link" href="/docs/getting-started">
+  <strong className="np-card-title">Getting started</strong>
+  <p>Install, finish the first-run wizard, publish your first post.</p>
+</a>
+
+<a className="np-card np-card--link" href="/docs/guides">
+  <strong className="np-card-title">Guides</strong>
+  <p>Pages, posts, topics, menus, media — the day-to-day publishing tasks.</p>
+</a>
+
+<a className="np-card np-card--link" href="/docs/themes">
+  <strong className="np-card-title">Themes</strong>
+  <p>Activate a theme, customize templates in the visual builder, pick fonts and colors.</p>
+</a>
+
+<a className="np-card np-card--link" href="/docs/site-admin">
+  <strong className="np-card-title">Site admin</strong>
+  <p>SEO, redirects, backups — the housekeeping pages every site eventually needs.</p>
+</a>
+
+<a className="np-card np-card--link" href="/docs/security">
+  <strong className="np-card-title">Security</strong>
+  <p>Lockout, IP blocking, step-up auth — defense in depth on the auth path.</p>
+</a>
+
+<a className="np-card np-card--link" href="/docs/developer">
+  <strong className="np-card-title">Developer</strong>
+  <p>Plugin system, REST API, settings registry. The deep-dive material for engineers extending NextPress.</p>
+</a>
+
+</div>
+
+## What carries over from WordPress
+
+The mental model. If you've built sites on WordPress, NextPress will feel familiar from day one.
+
+| WordPress | NextPress |
+| --- | --- |
+| Posts & post types | Posts with typed schemas and revisions |
+| Pages | Pages with the same block-based editor as posts |
+| Categories & tags | Topics (flat) + Pillars & spikes (hub-and-spoke) |
+| Actions & filters | Type-safe hook bus (actions + filters) |
+| Plugins | Isolated plugins with their own migrations, settings, and routes |
+| Themes | Swappable presentation layer with a visual builder |
+| Options table | Settings registry with Zod validation and encryption |
+| Roles & capabilities | Roles with granular permissions + step-up auth |
+| Sitemap / RSS / robots.txt | Built-in and load-bearing — they ship in the essential tier |
+
+## What doesn't
+
+- **No PHP**, no themes-from-the-marketplace roulette, no "incompatible with WordPress X.Y" Tuesdays.
+- **No tracking.** The engine doesn't ship analytics, tracking pixels, or third-party data collection.
+- **No plugin marketplace overhead.** Plugins are TypeScript files in your repo. Install one by `git clone`-ing it; uninstall by deleting it.
+
+## Core principles
+
+- **Plugin-first architecture.** Posts, users, media, auth — every feature flows through the same plugin contract.
+- **SEO survives everything.** Sitemaps, structured data, RSS, robots.txt are essential-tier and load even when other plugins fail.
+- **Security is the baseline.** Lockout, IP blocking, audit logging, encrypted credentials, step-up auth — all in core.
+- **Privacy by default.** No tracking pixels, no third-party analytics, no data you didn't ask for.
+
+## Two-minute tour
+
+1. **You install NextPress** as a Next.js app (local, Vercel, or self-hosted).
+2. **You sign in** and finish the first-run wizard — site title, admin user, timezone.
+3. **You write content** in the admin UI — pages, posts, topics, media.
+4. **The active theme renders** your content on the public site. The default `nextpresso` theme covers most use cases out of the box.
+5. **You customize**: theme builder for visual changes, settings for behavior changes, the REST API for headless consumers.
+
+Ready? [Getting started](/docs/getting-started) → install → first-run wizard → first post.

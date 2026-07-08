@@ -1,0 +1,153 @@
+---
+title: Users & authors
+description: Invite editors, assign roles, manage author bios and avatars.
+---
+
+NextPress treats every signed-in user as both an **admin user** (with role-based capabilities) and a potential **author** (with a public-facing profile page). This guide covers both sides — inviting and managing users, and curating how their author profile appears on the public site.
+
+## Sign in vs. author profile
+
+The same user record powers two things:
+
+- **Sign-in identity** — email, password, role, sessions. Controls what the user can do in the admin.
+- **Author profile** — display name, full name, bio, avatar, social links. Controls how the user appears on `/author/<username>` and in post bylines.
+
+Some sites have many users (a small editorial team) with only a few who write public content. Others are single-user. Either way, every user has both surfaces — most fields are optional, so a "behind-the-scenes" editor can leave their author profile empty.
+
+## Inviting a user
+
+1. **Users → All users** in the admin sidebar.
+2. **Invite user**.
+3. Fill in:
+   - **Email** — sent the invite link.
+   - **Display name** — shown as the author byline on posts the user writes.
+   - **Role** — picks the user's capability set (see Roles below).
+4. **Send invite**. The user gets an email with a magic link to set their password.
+
+The invite link expires in 48 hours by default. If it expires, **Users → Pending invites → "•••" → Resend** generates a fresh one.
+
+## Roles & capabilities
+
+A user's **role** decides what they can do in the admin. NextPress ships with three built-in roles:
+
+| Role | Can do |
+| --- | --- |
+| **Administrator** | Everything — content, media, users, roles, settings, themes, plugins. Full access; there's no level above it. |
+| **Editor** | Manage all content: posts, pages, media, topics, and galleries. No access to users, roles, settings, or themes. |
+| **Author** | Create and edit their own drafts and upload media. Can't touch other users' content. |
+
+The first user created during the setup wizard becomes the Administrator. After that, you pick each user's role on the user form.
+
+### Editing roles
+
+Roles live under **Roles** in the admin sidebar (`/admin/roles`). The **Manage** tab lists every role; the **Add role** tab creates new ones.
+
+Capabilities are organized by content type, each with one or two grades you toggle on or off:
+
+| Area | Grades |
+| --- | --- |
+| **Posts** | *New* (create published posts, publish drafts, delete) · *Drafts* (create and edit drafts) |
+| **Pages** | *New* · *Drafts* (same split as Posts) |
+| **Media** | *Add* (upload) · *Delete* |
+| **Topics** | *Manage* (create/edit/delete) · *Assign* (tag posts with existing topics) |
+| **Galleries** | *Manage* (create/edit/delete) |
+
+What you can do:
+
+- **Adjust the Editor and Author roles** — toggle individual grades (e.g. give Author *Media → Delete*). Their names are fixed, but the capability set is yours to tune.
+- **Create a custom role** — name it, then switch on just the grades it needs. Handy for narrow specializations like a "Contributor" who only drafts posts.
+- **Delete a custom role** — only when no users are assigned to it. NextPress asks you to reassign those users first.
+
+A few guardrails the UI enforces:
+
+- The **Administrator** role is locked — its name and full-access permission set can't be changed, and it can't be deleted.
+- You can't remove your **own** Administrator role, disable your own account, or delete the **last** administrator. Promote someone else first.
+- Custom role names can't reuse a built-in slug (`admin`, `editor`, `author`).
+
+## Step-up auth
+
+Some destructive actions require re-entering your password before they execute, even when you're already signed in. This is called **step-up auth** and it covers:
+
+- Deleting a user.
+- Changing a user's role.
+- Promoting a user to Administrator.
+- Restoring from a backup.
+- Deleting media in bulk.
+
+When you click one of these actions, a password prompt appears. The re-confirmation is valid for 10 minutes — within that window, you won't be prompted again for other step-up actions. See [Security → Step-up auth](/docs/security/step-up-auth).
+
+## The user form
+
+Open a user from **Users → All users → \<user\>**. Tabs across the top:
+
+### Profile
+
+The user's public-facing author profile. Every field is optional except display name.
+
+| Field | What it controls |
+| --- | --- |
+| **Display name** | Byline shown on posts. The user's `/author/<username>` URL is built from this (lowercased + slugified). |
+| **Full name** | Optional "real name" alternative to display name. Theme widgets (AuthorName, PostMeta, HeroTitle) can switch between full and display name per-block. |
+| **Avatar** | Picked from the media library. Falls back to initials when empty. |
+| **Bio** | Markdown-supported author bio. Rendered on `/author/<username>` and (theme-permitting) below post bodies. |
+| **Social links** | Twitter, Bluesky, Mastodon, GitHub, LinkedIn, custom URL. Rendered as icons on the author profile page. |
+
+### Account
+
+The user's sign-in side.
+
+| Field | What it controls |
+| --- | --- |
+| **Email** | Primary identifier. Email changes trigger a verification email to the new address before they take effect. |
+| **Role** | The capability set. Changing this is a step-up action. |
+| **Status** | Active / Suspended. Suspended users can't sign in; their existing content is unaffected. |
+| **Password** | Lets an administrator reset a user's password. The user is signed out of all sessions on password change. |
+| **Two-factor** | Status display (the user enrolls themselves under their own profile). |
+
+### Sessions
+
+Lists the user's active sessions with browser, OS, last-seen time, and IP. **Revoke** kicks a session immediately. **Revoke all** ends every session for the user — useful after suspending an account.
+
+## Author profile pages
+
+Every user has a public author profile at `/author/<username>` where `<username>` is the slugified display name. The profile page shows:
+
+1. The **avatar**.
+2. The **display name** (or full name, depending on theme widget config).
+3. The **bio** (if set).
+4. **Social links** as icons.
+5. The user's **posts**, newest first.
+
+Editors can customize the author template under **Themes → \<theme\> → Open builder → Author profile**.
+
+## Hiding an author from the public site
+
+Some users (e.g. internal-only editors) shouldn't have a public profile page. Two ways:
+
+1. **Empty profile.** Leave display name as their email handle, no bio, no avatar. The profile page still exists but is bare.
+2. **Block the profile route.** Add a redirect from `/author/<username>` to `/` (or `/404`) under [Site admin → Redirects](/docs/site-admin/redirects).
+
+There's no "hide author" toggle out of the box — author content is shared by definition, so making it opt-in didn't feel right. The redirect path is for the rare cases.
+
+## Deleting a user
+
+From **Users → All users → "•••" → Delete**. NextPress asks how to handle the user's existing posts:
+
+- **Reassign to another user** — pick a target user; their posts become that user's posts.
+- **Convert to a placeholder author** — posts stay published but show "Unknown" as the byline.
+- **Delete all the user's posts** — irreversible. Each post goes to trash.
+
+After confirming, the user is deleted (step-up auth required).
+
+## Suspending vs. deleting
+
+Suspending is reversible — toggle **Status → Suspended** on the Account tab. The user can't sign in but their content is unchanged. Re-activate any time.
+
+Deleting is final and forces a decision about the user's content. Suspend if you're not sure.
+
+## Tips
+
+- **Pick display names that work as URLs.** "Drew Altukhov" → `/author/drew-altukhov` — fine. Avoid emoji, special characters, leading numbers — the slugifier strips them but the result might be ugly.
+- **Fill in bios.** Even one paragraph + a few social links makes the author profile a useful destination instead of a dead end.
+- **Don't make everyone an Administrator.** Resist the temptation. The Editor role covers most editorial work without exposing users, roles, settings, or destructive actions.
+- **Revoke sessions when an account is compromised.** "Revoke all" + reset password kicks every attacker out instantly.

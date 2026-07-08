@@ -1,0 +1,101 @@
+---
+title: Settings Registry
+description: How plugins register, read, and write site settings with Zod validation and encryption.
+---
+
+## Defining settings
+
+Plugins register their settings at boot using `defineSettings()`:
+
+```typescript
+import { defineSettings } from "@core-plugins/settings";
+import { z } from "zod";
+
+defineSettings([
+  {
+    key: "site.title",
+    group: "Site / General",
+    label: "Site title",
+    description: "Displayed in browser tabs and the default OG title",
+    schema: z.string().min(1).max(120),
+    defaultValue: "NextPress",
+    scope: "public",
+  },
+  {
+    key: "smtp.password",
+    group: "Email",
+    label: "SMTP Password",
+    schema: z.string(),
+    defaultValue: "",
+    scope: "private",
+    encrypted: true,
+  },
+]);
+```
+
+## Reading settings
+
+```typescript
+import { getSetting } from "@core-plugins/settings";
+
+// Returns the stored value, or the definition's defaultValue if not set
+const title = await getSetting<string>(db, "site.title");
+
+// For encrypted settings, pass the encryption secret
+const smtpPass = await getSetting<string>(db, "smtp.password", process.env.AUTH_SECRET);
+```
+
+## Writing settings
+
+```typescript
+import { setSetting } from "@core-plugins/settings";
+
+// Validated against the Zod schema — throws if invalid
+await setSetting(db, "site.title", "My Blog", {
+  updatedBy: userId,
+});
+
+// Encrypted settings need the secret
+await setSetting(db, "smtp.password", "new-password", {
+  updatedBy: userId,
+  secret: process.env.AUTH_SECRET,
+});
+```
+
+## Definition fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `key` | string | Dot-notated identifier (e.g. `site.title`, `security.lockout_threshold`) |
+| `group` | string | Admin UI grouping (e.g. "Site / General", "Security") |
+| `label` | string | Human-readable label |
+| `description` | string? | Help text shown in the admin UI |
+| `schema` | ZodSchema | Validation schema — also drives the admin editor type |
+| `defaultValue` | unknown | Fallback when no DB row exists |
+| `scope` | `"public"` \| `"private"` | Public = safe for client-side; private = admin-only |
+| `encrypted` | boolean? | If true, value is AES-256-GCM encrypted at rest |
+| `permission` | string? | Required permission to edit (default: `settings.write`) |
+| `stepUpRequired` | boolean? | If true, editing requires step-up auth |
+
+## Autoload cache
+
+Settings with `autoload: true` in the database are loaded into an in-memory cache at boot. This avoids a DB round-trip for frequently-accessed values like `site.title`.
+
+Call `loadAutoloadCache(db)` at app startup to prime the cache.
+
+## Encryption
+
+Settings with `encrypted: true` are stored as:
+
+```json
+{
+  "ciphertext": "base64...",
+  "iv": "base64...",
+  "authTag": "base64...",
+  "keyVersion": 1
+}
+```
+
+The encryption key is derived from `AUTH_SECRET` via SHA-256. Key rotation is supported through the `keyVersion` field.
+
+In the admin UI, encrypted values display as `••••••••` with a reveal button gated by step-up auth.

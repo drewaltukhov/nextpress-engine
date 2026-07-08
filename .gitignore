@@ -1,0 +1,64 @@
+# Per-user Claude Code settings (project-shared settings.json may be committed; .local.json is per-user)
+.claude/settings.local.json
+
+# Node
+node_modules/
+.npm/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Fumadocs generated source (regenerated on build/dev)
+.source/
+
+# Next.js
+.next/
+out/
+.vercel/
+.turbo/
+next-env.d.ts
+
+# Build artifacts
+dist/
+build/
+*.tsbuildinfo
+
+# Env files (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Local SQLite — `.local/dev.db` is committed so dev state travels between
+# laptops; all other libSQL/SQLite scratch (WAL/SHM, replica residue, ci
+# snapshots, .DS_Store) stays local. Stop the dev server before committing
+# the DB to avoid mid-write WAL state.
+.local/*
+!.local/dev.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Test artifacts
+/test-results/
+/coverage/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# feature-flow session-local files (not committed to feature branches)
+.feature-flow/
+.worktrees/
+.claude/worktrees/
+FEATURE_CONTEXT.md
+DECISIONS_ARCHIVE.md
+
+# superpowers brainstorming mockups (local visual companion sessions)
+.superpowers/
+.vercel

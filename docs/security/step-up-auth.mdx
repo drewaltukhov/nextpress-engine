@@ -1,0 +1,62 @@
+---
+title: Step-Up Auth
+description: Password re-entry for destructive admin actions (sudo mode).
+---
+
+## What is step-up auth?
+
+Step-up authentication (also called "sudo mode") requires users to re-enter their password before performing sensitive or destructive actions. This protects against session theft — even if an attacker steals a session cookie, they can't perform destructive actions without the actual password.
+
+## How it works
+
+1. User attempts a sensitive action (e.g. deleting a user, revoking an API token)
+2. Server checks if the action requires step-up auth for the user's role
+3. If the user has a fresh step-up timestamp (within 5 minutes), the action proceeds
+4. If not, the UI prompts for password re-entry
+5. `POST /api/admin/auth/step-up` verifies the password and returns a `stepUpAt` timestamp
+6. The action is retried with the fresh timestamp
+
+## Protected actions
+
+The following actions require step-up auth for admin users:
+
+| Action | Description |
+|--------|-------------|
+| `users.delete` | Delete a user account |
+| `plugins.disable` | Disable a plugin |
+| `settings.security.update` | Change security thresholds |
+| `api_tokens.create` | Create a new API token |
+| `cache.clear` | Clear the site cache |
+| `reserved_slugs.add` | Reserve a URL slug |
+| `reserved_slugs.remove` | Remove a reserved slug |
+
+## Freshness window
+
+The step-up timestamp is valid for **5 minutes** by default. After that, the user must re-enter their password for the next sensitive action. This balances security with usability — an admin doing multiple sensitive operations in a row only needs to authenticate once.
+
+The window is configurable from **Admin → Security → Settings** (`security.step_up_ttl_minutes`). Range: 1–60 minutes.
+
+## Per-role configuration
+
+Each role's `require_step_up` array defines which actions need step-up for that role. The admin role has the most actions gated; other roles may have fewer or none.
+
+## API endpoint
+
+```
+POST /api/admin/auth/step-up
+Content-Type: application/json
+
+{ "password": "your-password" }
+```
+
+**Success (200):**
+```json
+{ "stepUpAt": "2026-05-01T12:00:00.000Z" }
+```
+
+**Failure (403):**
+```json
+{ "error": "Invalid password" }
+```
+
+Failed step-up attempts are audit-logged with action `auth.step_up.failed`.

@@ -1,0 +1,147 @@
+---
+title: Core Plugins
+description: The 11 core plugins that ship with NextPress and what each one provides.
+---
+
+NextPress ships with 11 core plugins that provide the engine's foundational capabilities. All are essential-tier unless noted.
+
+## 1. Users
+
+**Slug:** `users` | **Tables:** 7
+
+Manages user accounts, credentials, roles, and email verification.
+
+- User accounts with email, display name, avatar, timezone
+- Argon2id password hashing with zxcvbn strength checking
+- Email verification and password reset tokens
+- Role-based permissions (admin, editor, author, contributor)
+- Session revocation for security events
+
+## 2. Logging
+
+**Slug:** `logging` | **Tables:** 5
+
+Append-only logging infrastructure for forensics and observability.
+
+- `system_log` — application-level log entries
+- `audit_log` — who did what, when (with diff snapshots)
+- `failed_logins` — brute-force forensics with IP and user-agent
+- `failed_jobs` — background job failure tracking
+- `plugin_failures` — plugin crash history
+- Automatic PII redaction via the secret-pattern redactor
+
+## 3. Security
+
+**Slug:** `security` | **Tables:** 2 (`blocked_ips`, `allowed_ips`)
+
+Wordfence-style anti-brute-force protection.
+
+- Per-email account lockout (5 failures in 15 min = 30 min lock)
+- IP auto-blocking (20 failures in 30 min = 60 min block)
+- CIDR-based allow list (office VPN, partner IPs)
+- Step-up auth ("sudo mode") for destructive actions
+- Timing-safe authentication (no email enumeration via response time)
+
+## 4. API Tokens
+
+**Slug:** `api` | **Tables:** 1 (`api_tokens`)
+
+Token-based authentication for the `/api/v1/*` REST API.
+
+- SHA-256 hashed token storage (plaintext shown once at creation)
+- Scope-based access control
+- Per-token CIDR allowlist
+- In-memory token-bucket rate limiting
+- Bearer auth middleware for route handlers
+
+## 5. Settings
+
+**Slug:** `settings` | **Tables:** 1 (`site_settings`)
+
+Registry-driven site configuration with validation and encryption.
+
+- `defineSettings()` API for plugins to register their settings
+- Zod schema validation on read and write
+- AES-256-GCM encryption for sensitive values (API keys, passwords)
+- Autoload cache for frequently-accessed settings
+- Public/private scope separation
+
+## 6. Redirects
+
+**Slug:** `redirects` | **Tables:** 1 (`redirects`)
+
+URL redirect management with auto-creation on slug changes.
+
+- Path-based redirect matching (301, 302, 307, 308, 410)
+- Auto-created redirects on permalink/slug changes
+- Cycle detection (max 5 hops)
+- Hit counting and expiration support
+- Active/inactive toggle without deletion
+
+## 7. SEO
+
+**Slug:** `seo` | **Tables:** 0 (uses settings)
+
+Search engine optimization routes and structured data.
+
+- `/sitemap.xml` — sitemap index (populated when posts ship)
+- `/robots.txt` — environment-aware (blocks crawling on staging) and admin-overridable from the SEO → Robots tab
+- `/rss.xml` — RSS 2.0 feed
+- JSON-LD helpers (Article, WebSite, BreadcrumbList) plus an Identity discriminated union (Organization | Person | LocalBusiness) wired into the homepage `@graph`
+- Admin UI at `/admin/seo` with six tabs: General, Sitemap, Robots, Verification, Identity, **Install schemas**
+- Flag-style dropdowns for Site language, Organization/LocalBusiness phone country code, and LocalBusiness country (ISO 3166-1 alpha-2)
+- **Install schemas tab** — curated 20-entry schema.org catalog (Article, BlogPosting, NewsArticle, Product, Review, Recipe, HowTo, FAQPage, Event, Course, JobPosting, VideoObject, ImageObject, Book, Movie, LocalBusiness, Service, SoftwareApplication, Person, AggregateRating). Two-column Enabled / Available cards with shared search and instant Add/Remove. Persists to `seo.enabled_schemas` and gates which `@type`s appear in the per-post Schema selector when the Posts plugin ships
+
+## 8. Media
+
+**Slug:** `media` | **Tables:** 1 (`media`)
+
+Image library with admin UI at `/admin/media` and reusable Media Picker.
+
+- DB-blob storage by default; the `media` table carries `storage_backend` + `storage_ref` columns so future plugin-supplied backends (Vercel Blob, S3, etc.) drop in without a schema migration
+- 600 px WebP thumbnail generated on upload via `sharp`
+- Optional auto-conversion of incoming JPEG and BMP uploads to WebP at quality 90, EXIF-baked — toggleable from Media → Settings (default on)
+- Library tab with hover checkboxes for bulk delete (red "Delete selected" pill on the tabs row when 2+ items are picked)
+- Permission-aware: admins/editors can delete anything; other roles delete only their own uploads
+- Reusable `<MediaPickerInput>` and `<MediaPickerDialog>` components consumed by the SEO admin (and ready for any future image input)
+
+## 9. Topics
+
+**Slug:** `topics` | **Tables:** 1 (`topics`)
+
+Flat-tag taxonomy with admin CRUD at `/admin/topics`. Stays separate from WP-style hierarchical categories — pillar/spokes content strategy is implemented as a post-to-post relationship in the Posts plugin instead.
+
+- Single admin page: name / slug / description / post-count table with edit + delete actions
+- Slug auto-derives from name with live preview, normalized via `normalizeSlug`, checked against the global `reserved_slugs` registry, and unique per tenant
+- `post_count` is denormalized — defaults to 0, the future Posts plugin maintains it on assign/unassign
+- Reused dialog for Add and Edit (keyed by topic id so re-opening resets cleanly)
+- Delete confirm shows the post count when non-zero ("…used on 12 posts. Delete anyway?")
+- Permission-aware: admins (`*`) get full access; editor role gets `topics.manage` via the seeded role permissions; custom roles can grant/revoke from the Topics column on `/admin/roles`
+- Sidebar entry under Content auto-hides for users without `topics.manage` (the `requiresPermission` field on `NavItem` is the generic mechanism — Posts/Pages will plug into the same hook when they ship)
+
+## 10. Galleries
+
+**Slug:** `galleries` | **Tables:** 2 (`galleries`, `gallery_items`)
+
+Named, ordered media sets with drag-reorder UX. Surfaces as a fourth tab on `/admin/media` plus a per-gallery edit screen at `/admin/media/galleries/[id]`.
+
+- Card-grid list view with cover thumbnail (auto-picked from first item if not set), name, item count, "Updated Xh ago"
+- Drag-reorderable grid via `@dnd-kit/sortable`; per-item set-cover star, remove button, inline caption
+- Multi-select add-from-library dialog reuses the existing `MediaPickerDialog` infrastructure
+- Slug uniqueness uses the same `normalizeSlug` + `reserved_slugs` registry as topics / users / pages
+- Embed shortcode `[gallery id="N"]` is the cross-system reference format (used by the Pages plugin's Gallery block; future Posts shortcode parser must honor it)
+- Cascade-FK safe: `item_count` and `cover_media_id` are denormalized for writes but always computed live on read (FK cascade from media bypasses app code that maintains the counter)
+- Permission-aware: admins (`*`) full access; editor role gets `galleries.manage` via seeded role permissions
+
+## 11. Pages
+
+**Slug:** `pages` | **Tables:** 1 (`pages`)
+
+Structured page authoring built on Puck (block editor) and Tiptap (RichText). Admin CRUD at `/admin/pages`; published pages render at `/[slug]` via the public renderer at `src/app/[slug]/page.tsx`.
+
+- **Block library** — Heading, RichText (Tiptap with image insert via URL or media library), Image, YouTube (autoplay/mute/loop/start/end), FAQSection (auto-emits `FAQPage` JSON-LD), Gallery (carousel + grid + lightbox), Spacer (preset rems + custom), Table (full builder UX with rows/columns, header/borders/zebra toggles)
+- **Soft-delete trash** — `trashed_at` column with partial-unique slug index that frees the slug immediately; CLI at `scripts/pages-purge-trash.ts` for the 30-day cleanup
+- **Per-page SEO** — title, description, canonical, OG image, robots directive, schema-type chips (Article + FAQPage auto-emitted)
+- **Media shortcodes** — `[img id="..."]` and `[thumb id="..."]` inside RichText expand to images with click-to-zoom lightbox on the public page; the public renderer batch-fetches every referenced media row in one round-trip and injects via Puck `metadata`
+- **RichText image insert** — toolbar button opens a dialog with URL paste OR pick-from-library; both paths share alignment (Left / Center / Right) and a thumbnail-mode toggle; selected images get a floating edit pencil that re-opens the same dialog pre-filled
+- **Public route is the shared resolver** — `slug_reservations` enforces global uniqueness across content types so Posts (when shipped) falls through the same `/[slug]` route without a separate prefix

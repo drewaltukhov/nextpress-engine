@@ -1,0 +1,310 @@
+/**
+ * Docs-scoped style polish.
+ *
+ * Fumadocs renders MDX body content into a `<div class="prose …">`
+ * container (see `DocsBody` in node_modules/fumadocs-ui). All of the
+ * overrides in this file are scoped under `.prose` so they can't
+ * leak to admin / public template surfaces.
+ *
+ * `!important` is used where Fumadocs ships its own `:where(td)`
+ * prose rules — `:where()` has zero specificity, so a plain selector
+ * doesn't always win. We could lean on attribute-selector tricks,
+ * but the rules below are small, scoped, and intentional. The
+ * loudness is the point: each `!important` is a deliberate override
+ * of a known third-party rule, not a maintenance grenade.
+ */
+
+/* Brand tokens — match `src/app/globals.css @theme` colors so docs
+ * feel like part of the same app as admin / public templates. */
+.prose {
+  --np-brand-navy: #2A3A5B;
+  --np-brand-green: #2B944F;
+  --np-brand-light-green: #E3EDE4;
+  --np-slate-50: rgb(248 250 252);
+  --np-slate-100: rgb(241 245 249);
+  --np-slate-200: rgb(226 232 240);
+  --np-slate-300: rgb(203 213 225);
+  --np-slate-500: rgb(100 116 139);
+  --np-slate-700: rgb(51 65 85);
+  --np-slate-900: rgb(15 23 42);
+}
+
+/* ── Headings ─────────────────────────────────────────────────── */
+
+/* The page H1 (rendered by DocsTitle, not by MDX) already gets large
+ * typography from Fumadocs. We add brand-navy color + a gentle weight
+ * so it reads like the admin's section headers, not a generic prose
+ * H1. The selector reaches into the page wrapper, not just `.prose`. */
+article > h1,
+.prose h1 {
+  color: var(--np-brand-navy);
+  letter-spacing: -0.02em;
+}
+
+/* H2 — a subtle accent rule + brand-navy color. Section breaks need
+ * to read clearly in long pages. */
+.prose h2 {
+  color: var(--np-brand-navy);
+  margin-top: 2.5rem !important;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--np-brand-light-green);
+  position: relative;
+}
+
+/* H3 — slight indent + lighter weight. */
+.prose h3 {
+  color: var(--np-brand-navy);
+  margin-top: 1.75rem !important;
+}
+
+/* ── Links ────────────────────────────────────────────────────── */
+
+.prose a {
+  color: var(--np-brand-green) !important;
+  text-decoration: underline;
+  text-decoration-color: rgb(43 148 79 / 0.35);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+  transition: text-decoration-color 0.15s ease, color 0.15s ease;
+  font-weight: 500;
+}
+
+.prose a:hover {
+  color: var(--np-brand-navy) !important;
+  text-decoration-color: var(--np-brand-navy);
+}
+
+/* ── Tables ───────────────────────────────────────────────────── */
+
+/* Reset Fumadocs' table chrome so we can build our own. The selectors
+ * here mirror Fumadocs' `:where(table)` + `:where(td)` + `:where(th)`
+ * with non-`:where` selectors so we win the specificity battle. */
+.prose table {
+  width: 100% !important;
+  font-size: 0.875rem !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border: 1px solid var(--np-slate-200) !important;
+  border-radius: 0.75rem !important;
+  overflow: hidden !important;
+  margin: 1.75rem 0 !important;
+  background: white;
+}
+
+.prose thead {
+  background: linear-gradient(180deg, var(--np-brand-light-green), #f0f6f1) !important;
+}
+
+.prose thead th {
+  padding: 0.75rem 1rem !important;
+  border: none !important;
+  text-align: left !important;
+  font-weight: 600 !important;
+  color: var(--np-brand-navy) !important;
+  background: transparent !important;
+  font-size: 0.8125rem !important;
+  letter-spacing: 0.02em !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px solid var(--np-slate-200) !important;
+}
+
+.prose tbody td {
+  padding: 0.75rem 1rem !important;
+  border: none !important;
+  border-top: 1px solid var(--np-slate-100) !important;
+  color: var(--np-slate-700) !important;
+  vertical-align: top !important;
+  background: transparent !important;
+}
+
+/* Drop the top-border on the first body row so it doesn't double up. */
+.prose tbody tr:first-child td {
+  border-top: 0 !important;
+}
+
+/* Subtle zebra — pulls reading-comprehension on long reference tables. */
+.prose tbody tr:nth-child(even) {
+  background: rgb(248 250 252 / 0.7);
+}
+
+/* Code inside tables — tighter than body code so cell heights stay sane. */
+.prose table code {
+  padding: 0.125rem 0.4rem !important;
+  font-size: 0.78rem !important;
+  background: var(--np-slate-100) !important;
+  color: var(--np-brand-navy) !important;
+}
+
+/* ── Inline code ──────────────────────────────────────────────── */
+
+.prose :not(pre) > code {
+  background: var(--np-brand-light-green) !important;
+  color: var(--np-brand-navy) !important;
+  border-radius: 0.375rem !important;
+  padding: 0.125rem 0.4rem !important;
+  font-size: 0.875em !important;
+  font-weight: 500 !important;
+  border: 1px solid rgba(43, 148, 79, 0.15) !important;
+}
+
+/* Avoid the awkward backticks around inline code. */
+.prose :not(pre) > code::before,
+.prose :not(pre) > code::after {
+  content: "" !important;
+}
+
+/* ── Blockquotes ──────────────────────────────────────────────── */
+
+.prose blockquote {
+  border-left: 4px solid var(--np-brand-green) !important;
+  background: linear-gradient(135deg, var(--np-brand-light-green), rgb(255 255 255)) !important;
+  padding: 1rem 1.25rem !important;
+  border-radius: 0 0.5rem 0.5rem 0 !important;
+  font-style: normal !important;
+  color: var(--np-brand-navy) !important;
+  font-weight: 500 !important;
+  quotes: none !important;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  margin: 1.5rem 0 !important;
+}
+
+.prose blockquote::before,
+.prose blockquote p::before,
+.prose blockquote p::after {
+  content: "" !important;
+}
+
+/* ── Lists ────────────────────────────────────────────────────── */
+
+.prose ul > li,
+.prose ol > li {
+  margin-top: 0.375rem !important;
+  margin-bottom: 0.375rem !important;
+}
+
+/* Custom bullet — small green dot instead of the default disc. */
+.prose ul > li::marker {
+  color: var(--np-brand-green);
+}
+
+.prose ol > li::marker {
+  color: var(--np-brand-green);
+  font-weight: 600;
+}
+
+/* ── Code blocks ──────────────────────────────────────────────── */
+
+.prose pre {
+  border-radius: 0.75rem !important;
+  border: 1px solid var(--np-slate-200) !important;
+  background: linear-gradient(180deg, #fafbfc, #f5f7f9) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* ── Cards (rendered as <div class="np-card">) ────────────────── */
+/* MDX has no card primitive by default. Authors can drop a div with
+ * class `np-card` in MDX to use these — it's plain HTML, no MDX
+ * component needed. */
+
+.np-card {
+  display: block;
+  background: white;
+  border: 1px solid var(--np-slate-200);
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  margin: 1rem 0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.np-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  border-color: var(--np-brand-green);
+}
+
+.np-card h3,
+.np-card h4 {
+  margin-top: 0 !important;
+  color: var(--np-brand-navy);
+}
+
+.np-card p:last-child {
+  margin-bottom: 0;
+}
+
+/* Card grid — wrap any number of `.np-card`s in `.np-card-grid` for
+ * a responsive two-column layout. */
+.np-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+@media (min-width: 768px) {
+  .np-card-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.np-card-grid .np-card {
+  margin: 0;
+}
+
+/* ── Callouts via blockquote variants ─────────────────────────── */
+/* Fumadocs ships Callout components; for plain markdown, the
+ * blockquote treatment above covers the "tip" case. For an explicit
+ * info/warn/etc., authors can wrap the blockquote in a div with the
+ * variant class. Visual treatment differs by variant. */
+
+.np-callout {
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  border: 1px solid;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.np-callout--info {
+  background: rgb(239 246 255);
+  border-color: rgb(191 219 254);
+  color: rgb(30 58 138);
+}
+
+.np-callout--warn {
+  background: rgb(255 251 235);
+  border-color: rgb(253 230 138);
+  color: rgb(120 53 15);
+}
+
+.np-callout--danger {
+  background: rgb(254 242 242);
+  border-color: rgb(252 165 165);
+  color: rgb(127 29 29);
+}
+
+.np-callout--success {
+  background: var(--np-brand-light-green);
+  border-color: rgb(167 217 173);
+  color: var(--np-brand-navy);
+}
+
+/* ── Strong / em accents ──────────────────────────────────────── */
+
+.prose strong {
+  color: var(--np-brand-navy) !important;
+  font-weight: 600 !important;
+}
+
+/* ── Horizontal rule ──────────────────────────────────────────── */
+
+.prose hr {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--np-brand-light-green), transparent);
+  margin: 2.5rem 0;
+}

@@ -1,0 +1,84 @@
+---
+title: Plugin System
+description: How NextPress plugins work — isolation, hooks, migrations, and the plugin contract.
+---
+
+NextPress is built plugin-first. Every feature — users, security, API tokens, SEO, settings — is a core plugin that follows the same contract as any custom plugin you'd write.
+
+## Plugin structure
+
+Every plugin lives in its own directory under `src/core-plugins/` (core) or `src/plugins/` (custom):
+
+```
+my-plugin/
+  plugin.json        # metadata: slug, name, version, dependencies, tier
+  index.ts           # register(api) entry point + exports
+  schema/            # Drizzle schema definitions
+  migrations/        # SQL migration files
+    001_init.sql
+    meta/_journal.json
+```
+
+## Plugin metadata (`plugin.json`)
+
+```json
+{
+  "slug": "my-plugin",
+  "name": "My Plugin",
+  "version": "1.0.0",
+  "engine": "^1.0.0",
+  "type": "plugin",
+  "tier": "standard",
+  "dependencies": ["users"],
+  "capabilities": {
+    "registers_admin_menu": true,
+    "registers_routes": true,
+    "exposes_hooks": ["my-plugin.after-save"]
+  }
+}
+```
+
+## Plugin tiers
+
+| Tier | Failure threshold | Behavior |
+|------|-------------------|----------|
+| **essential** | 5 failures | Loads even in safe mode. SEO, security, logging — things that must always work. |
+| **standard** | 3 failures | Normal plugins. Failures are isolated — one broken plugin can't take down the site. |
+
+## Hooks (actions & filters)
+
+NextPress provides a typed hook bus — the same mental model as WordPress actions and filters:
+
+```typescript
+// Register a hook in your plugin's register(api) function
+api.hooks.addAction("post.afterSave", async (post) => {
+  // React to a post being saved
+});
+
+api.hooks.addFilter("seo.metadata", async (metadata, context) => {
+  // Modify SEO metadata before it's rendered
+  return { ...metadata, title: `${metadata.title} | My Site` };
+});
+```
+
+## Migrations
+
+Each plugin manages its own database tables through numbered SQL migrations:
+
+```sql
+-- migrations/001_init.sql
+CREATE TABLE IF NOT EXISTS `my_table` (
+  `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  `tenant_id` integer DEFAULT 1 NOT NULL,
+  ...
+);
+```
+
+Migrations run automatically on boot, with:
+- **Lock-based coordination** — no concurrent migration runs
+- **Checksum verification** — detects tampered migration files
+- **Per-plugin isolation** — one plugin's migration failure doesn't block others
+
+## Theme widgets
+
+Plugins can register Puck blocks droppable on any frontend surface. See [Theme Widgets](./theme-widgets) for the contract, namespacing rules, and the Crypto Beat reference example.

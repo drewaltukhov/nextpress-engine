@@ -1,0 +1,58 @@
+---
+title: Managing API tokens
+description: Create, scope, and revoke personal access tokens from the admin — and compose requests with the Build a Request tool.
+---
+
+This is the admin-side guide to **API Tokens** (`/admin/api-tokens`). For the token format, scopes, and authentication details, see [Tokens](/docs/developer/api/tokens) and [Authentication](/docs/developer/api/authentication).
+
+API tokens are personal access tokens that authenticate requests to the [`/api/v1/*`](/docs/developer/api/endpoints) endpoints — useful for CI jobs, integrations, and scripts. Each token carries a set of **scopes** that limit what it can do.
+
+## Creating a token
+
+On the **My Tokens** tab, click **Generate token**:
+
+1. **Name** it (e.g. "CI deploy bot") so you'll recognize it later.
+2. **Pick scopes** — at least one. The token can only do what its scopes allow:
+   - `posts:read`, `posts:write`, `posts:delete`
+   - `media:read`, `media:upload`, `media:delete`
+   - `taxonomies:read`, `taxonomies:write`
+   - `forms:read`
+   - `*` — grants everything (use sparingly).
+3. Click **Generate**.
+
+<Callout type="warn">
+The token is shown **once**. Only a SHA-256 hash is stored, so it can never be displayed again. Copy or download it now and keep it somewhere safe — if you lose it, revoke it and generate a new one.
+</Callout>
+
+By default tokens expire after 90 days (configurable — see Settings below). Send a token as a Bearer header:
+
+```
+Authorization: Bearer npp_xxxxxxxx…
+```
+
+## Viewing & revoking
+
+The **My Tokens** table lists your active tokens with their name, prefix (e.g. `npp_a3f9…`), scopes, last-used time and IP, and expiry. Click the trash icon to **revoke** one — it stops authenticating immediately and can't be restored.
+
+## Build a Request
+
+The **Build a Request** tab is an interactive composer that writes a correct, ready-to-run API call for you — no guessing at field names or auth headers.
+
+1. **Pick a token.** The resource and method options are filtered to what that token's scopes allow.
+2. **Pick a resource and method** — Posts or Topics; create (POST), update (PATCH), list (GET), or get-by-id.
+3. **Choose the fields** to include in the body. Known fields get smart editors — a `status` dropdown, a `post_kind` picker, a pillar selector for `parent_id`, multi-selects for `topic_ids` and `schema_types`, toggles for booleans.
+
+It generates copy-paste snippets as **cURL**, **raw HTTP**, or just the **JSON body**. Hit **Preview** to run the request live against your site: paste the plaintext token, review the method and URL, and send it.
+
+<Callout type="warn">
+Preview executes a **real** request. A POST or PATCH will create or modify data in your database — it's not a dry run.
+</Callout>
+
+## Settings
+
+The **Settings** tab sets site-wide defaults for newly generated tokens:
+
+- **Default lifetime** — how many days a fresh token stays valid (0 = never expires).
+- **Default rate limit** — requests per minute per token.
+
+Existing tokens keep the values they were created with; changing the defaults only affects tokens generated afterward. Creating and revoking tokens is recorded in the [activity log](/docs/security/logs).

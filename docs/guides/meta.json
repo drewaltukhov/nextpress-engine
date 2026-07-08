@@ -1,0 +1,5 @@
+{
+  "title": "Guides",
+  "description": "Everyday publishing tasks — pages, posts, topics, menus, media.",
+  "pages": ["index", "pages", "posts", "topics", "pillars-and-spikes", "media", "menus", "mega-menu", "users"]
+}

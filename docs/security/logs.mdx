@@ -1,0 +1,49 @@
+---
+title: Logs & sessions
+description: The audit trail, failed-login monitor, and active-session manager.
+---
+
+The **Logs** section (`/admin/logs`, admin-only) is where you see what's happening on your site — who changed what, who tried and failed to sign in, and who's logged in right now. It has four tabs.
+
+## Activity
+
+A complete audit trail of administrative and system actions. Each row shows:
+
+- **When** — relative time ("3 hours ago"); hover for the exact timestamp.
+- **Who** — the user who did it, or **System** for automated actions, or **API token** for token-driven requests.
+- **What** — a plain-English action name ("Signed in", "Created page", "Changed settings").
+- **Details** — the specifics: the target user, page title, changed fields, and so on.
+
+Filter by **Who**, by **What** (action type), and by **When** (last 24 hours, 7 days, 30 days, or all time), 50 entries per page. Tracked events span sign-ins and sign-outs, user and role changes, settings edits, content actions (create / update / publish / trash / restore), media uploads and deletes, theme and plugin changes, API token creation and revocation, IP and country blocks, and backup create/restore. Sensitive values in change diffs are redacted before they're ever stored.
+
+## Failed logins
+
+Every failed sign-in attempt, for spotting brute-force activity:
+
+- **When** the attempt happened,
+- the **email** that was tried,
+- the **country** the request came from (with a flag), and
+- a **Ban** action that adds that country to the [IP deny list](/docs/security/ip-blocking) in one click.
+
+Filter by date range the same way as Activity.
+
+## Sessions
+
+Everyone with an active admin session:
+
+- **User** (name, email, and "(you)" on your own session),
+- **Last active** time, and
+- **Device** — the browser and OS parsed from the user agent ("Chrome on Windows").
+
+Sign yourself out, or **Revoke** any other session to kick that device immediately (a confirmation is required, and the revocation is logged). Use this the moment an account looks compromised.
+
+## Settings
+
+Two controls for the log data itself:
+
+- **Retention** — keep logs for the last 1, 3, or 6 months. Older entries are cleaned up automatically.
+- **Purge all logs** — a danger-zone action that permanently deletes every audit, system, and failed-login record. It requires your password, and the purge itself is written back as the single remaining log entry.
+
+<Callout type="warn">
+Purging is irreversible and erases your security history. Export or review anything you need first — there's no undo.
+</Callout>

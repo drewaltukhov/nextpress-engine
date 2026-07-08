@@ -1,0 +1,45 @@
+---
+title: Authentication
+description: How to authenticate API requests with Bearer tokens.
+---
+
+Every request to `/api/v1/*` must include a valid Bearer token in the `Authorization` header.
+
+## Making authenticated requests
+
+```bash
+curl -H "Authorization: Bearer npp_your_token_here" \
+  https://your-site.com/api/v1/me
+```
+
+## Authentication flow
+
+When your request arrives, NextPress runs a 5-step validation:
+
+1. **Extract token** from the `Authorization: Bearer <token>` header
+2. **Hash and lookup** — compute SHA-256 of the token, query `api_tokens` table
+3. **Check expiration** — verify the token hasn't passed its `expires_at` date
+4. **Verify scope** — confirm the token has the scope required by the endpoint
+5. **Check IP allowlist** — if the token has `allowed_origins`, verify the request IP matches a CIDR range
+
+If any step fails, you get a `401` or `403` with an error code explaining what went wrong.
+
+## Session vs. token auth
+
+NextPress uses two authentication systems:
+
+| | Session (admin UI) | Bearer token (API) |
+|--|---|---|
+| **Where** | `/admin/*` routes | `/api/v1/*` routes |
+| **Mechanism** | NextAuth JWT cookie | `Authorization: Bearer` header |
+| **Identity** | Logged-in user | Token owner (a user) |
+| **Permissions** | Full user role | Intersection of user role AND token scopes |
+| **Rate limiting** | No | Yes (per-token bucket) |
+
+## Token-acts-as-user model
+
+API requests execute with the **intersection** of:
+1. The token owner's role permissions
+2. The token's assigned scopes
+
+For example, a token with `posts:write` owned by a `contributor` user still cannot publish — because the contributor role lacks `posts.publish`. Both the scope and the role permission must allow the action.

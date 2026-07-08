@@ -1,0 +1,63 @@
+---
+title: API Overview
+description: NextPress exposes a versioned REST API at /api/v1/* for external integrations, CI/CD, and headless consumption.
+---
+
+The NextPress API provides programmatic access to your site's content and configuration. All API routes live under `/api/v1/*` and require Bearer token authentication.
+
+## Key concepts
+
+- **Token-based auth** — every request needs a valid `Authorization: Bearer <token>` header
+- **Scope-restricted** — tokens are limited to specific operations (e.g. `posts:read`, `media:upload`)
+- **Rate-limited** — per-token bucket with configurable limits
+- **IP-restricted** — optional per-token CIDR allowlist
+
+## Response format
+
+All successful responses return:
+
+```json
+{
+  "data": { /* typed payload */ }
+}
+```
+
+All error responses return:
+
+```json
+{
+  "error": {
+    "code": "unauthorized",
+    "message": "Human-readable description"
+  }
+}
+```
+
+## Available endpoints
+
+| Method | Endpoint | Scope | Description |
+|--------|----------|-------|-------------|
+| `GET` | `/api/v1/me` | (any) | Token introspection — returns owner, scopes, expiration |
+| `GET / POST` | `/api/v1/posts` | `posts:read` / `posts:write` | List or create posts — see [Posts API](./posts) |
+| `GET / PATCH / DELETE` | `/api/v1/posts/:id` | `posts:read` / `posts:write` / `posts:delete` | Read, update, or trash a post |
+| `GET / POST` | `/api/v1/media` | `media:read` / `media:upload` | List or upload media — see [Media API](./media) |
+| `GET / DELETE` | `/api/v1/media/:id` | `media:read` / `media:delete` | Read or delete a media file |
+
+Per-resource pages document request/response shapes, filters, and worked examples for every verb.
+
+## Error codes
+
+| Code | HTTP Status | Meaning |
+|------|-------------|---------|
+| `unauthorized` | 401 | Missing, invalid, or revoked token |
+| `token_expired` | 401 | Token has passed its `expires_at` date |
+| `forbidden` | 403 | Token lacks the required scope, or IP not in allowlist |
+| `rate_limit_exceeded` | 429 | Token-bucket exhausted; retry after the `Retry-After` header value |
+| `not_found` | 404 | The resource id does not exist |
+| `invalid_body` | 400 | Request body is missing or could not be parsed |
+| `validation_error` | 400 | Body parsed but a field failed validation (missing required, bad enum, wrong type) |
+| `slug_conflict` | 409 | A live post already owns the requested slug in the same namespace |
+| `slug_reserved` | 409 | The requested slug clashes with a system-reserved path |
+| `invalid_parent` | 400 | A spike's `parent_id` doesn't reference a live pillar |
+| `upload_rejected` | 400 | A media upload exceeded the size limit or used a disallowed MIME type |
+| `internal_error` | 500 | Unexpected server error |

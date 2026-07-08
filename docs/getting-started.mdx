@@ -1,0 +1,129 @@
+---
+title: Getting started
+description: Install NextPress, finish the first-run wizard, and publish your first post in under ten minutes.
+---
+
+NextPress is a publishing engine you run yourself. This page walks you through the three steps every new site goes through, in order:
+
+1. **Install** the engine (locally for a kick-the-tires run, or on Vercel for a real site).
+2. **Finish the first-run setup wizard** that runs the first time you visit `/admin`.
+3. **Publish your first post** so you can see the engine actually doing something.
+
+Each step links out to the deeper material for when you're ready to go further.
+
+## 1. Install
+
+NextPress runs on Node.js 22+. You'll need npm (ships with Node) and, optionally, a [Turso](https://turso.tech) database — Turso is the free-tier-friendly libSQL host the engine is wired for. If you skip Turso, NextPress writes to a local SQLite file at `./.local/dev.db` instead, which is perfect for evaluating the engine.
+
+### Local install
+
+```bash
+git clone https://github.com/drewaltukhov/nextpress.git
+cd nextpress
+npm install
+cp .env.example .env.local        # fill in AUTH_SECRET — see below
+npm run plugins:discover          # generates the plugin manifest
+npm run migrate                   # applies the schema
+npm run dev                       # http://localhost:3000
+```
+
+Open [`http://localhost:3000/admin`](http://localhost:3000/admin) — the first-run setup wizard will appear (covered in step 2 below).
+
+### Production (Vercel)
+
+NextPress is built to deploy as a single Next.js app on Vercel's free tier. The shortest path:
+
+1. **Fork** [`drewaltukhov/nextpress`](https://github.com/drewaltukhov/nextpress) on GitHub.
+2. **Create a Turso database** (`turso db create my-site`) and grab its URL + token.
+3. **Import the project** at [vercel.com/new](https://vercel.com/new), pointing at your fork.
+4. Under **Settings → Environment Variables**, set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and `AUTH_SECRET`.
+5. Trigger a deploy. Open `https://<your-app>.vercel.app/admin` and finish the wizard.
+
+The first build runs `plugins:discover` + `migrate` automatically — no manual database step needed.
+
+### Required environment variables
+
+Only the values NextPress needs *to reach the database* and sign sessions live in env. Everything else moves into the admin UI after setup.
+
+| Variable | Required? | What it is |
+| --- | --- | --- |
+| `AUTH_SECRET` | Yes | A random 32+ character string used to sign session JWTs **and** encrypt sensitive settings (e.g. the SMTP password) at rest. Generate one with `openssl rand -base64 32`. |
+| `TURSO_DATABASE_URL` | In production | A `libsql://...` URL from `turso db show <name> --url`. Leave unset locally to fall back to `file:./.local/dev.db`. |
+| `TURSO_AUTH_TOKEN` | With Turso | Bearer token from `turso db tokens create <name>`. Not needed for the local-file fallback. |
+| `AUTH_URL` | Optional | Public URL of the site. Auto-detected on Vercel; set it explicitly if you're on a custom host. |
+
+You do **not** need to set SMTP credentials, OAuth keys, or site copy in env — every one of those is configured through the admin UI and stored in the database (encrypted where it matters).
+
+## 2. Finish the first-run setup wizard
+
+The first time you visit `/admin` on a brand-new database, NextPress shows a **setup wizard**. The wizard is mandatory — until it's complete, every admin route bounces back to `/admin/setup` and the public site shows a "we're getting set up" placeholder. The wizard captures three things:
+
+### Step 1 — Site identity
+
+| Field | What it's for |
+| --- | --- |
+| **Site title** | Shown in the admin shell header, the public `<title>`, the RSS feed, and the OG/Twitter meta tags. |
+| **Site tagline** | Optional. Pairs with the title in the OG description fallback and the site nav. |
+| **Site URL** | The canonical URL used by the sitemap, RSS, and structured data. Auto-detected on Vercel; double-check this in production. |
+| **Timezone** | Used everywhere a date is shown (post lists, the editor's "Published at" picker, the RSS feed timestamps). |
+| **Date format** | The site-wide display format. Per-post and per-page formatting falls back to this. |
+
+You can change any of these later under **Settings → Site identity**.
+
+### Step 2 — Administrator account
+
+You create the first admin user here:
+
+| Field | Notes |
+| --- | --- |
+| **Display name** | Shown on author bylines and the `/author/<username>` page. |
+| **Email** | Your sign-in identifier. Verification is enabled by default; check your inbox after submitting. |
+| **Password** | NextPress runs zxcvbn against every password — short or common passwords are rejected with a strength score. |
+
+The first user automatically gets the `super-admin` role. You can invite more users (and assign them lower-tier roles) later under **Users**.
+
+### Step 3 — First sign-in
+
+Once the wizard finishes, you land on the admin dashboard. The dashboard is intentionally quiet on a brand-new site — most of the cards are blank because there's no content yet.
+
+The top-right user menu has:
+
+- **Profile** — change your display name, email, password, avatar.
+- **Settings** — site-wide settings (SEO, SMTP, security thresholds, etc.).
+- **Sign out**.
+
+## 3. Publish your first post
+
+The shortest path from "blank dashboard" to "post on the public site":
+
+1. In the admin sidebar, click **Posts → All posts**.
+2. Hit **New post**. You'll land in the editor with a draft titled "Untitled".
+3. Type a title. The URL slug auto-fills from the title — you can edit it under **SEO** in the right rail.
+4. Drop content into the body. The editor is a block-based editor (Puck + Tiptap); see [Writing posts](/docs/guides/posts) for the full tour.
+5. Click **Publish** in the top-right.
+
+Visit `/<your-slug>` on the public site — your post is live, with the default `nextpresso` theme rendering it.
+
+## What to read next
+
+Now that you have a live site, the **Guides** section covers the rest of the publishing surface:
+
+| Read this | If you want to |
+| --- | --- |
+| [Pages](/docs/guides/pages) | Build About / Contact / Privacy-style static pages. |
+| [Posts](/docs/guides/posts) | Use the editor properly — blocks, SEO panel, scheduling. |
+| [Topics](/docs/guides/topics) | Organize posts with taxonomies and topic archives. |
+| [Pillars & spikes](/docs/guides/pillars-and-spikes) | The pillar/spike post relationship — a cleaner alternative to nested categories. |
+| [Media](/docs/guides/media) | Upload, organize, and embed images and other media. |
+| [Menus](/docs/guides/menus) | Build the site nav. |
+| [Users & authors](/docs/guides/users) | Invite editors, assign roles, manage author profiles. |
+| [Themes](/docs/themes) | Switch themes, customize templates with the theme builder. |
+| [Site admin](/docs/site-admin) | SEO, redirects, backups — the housekeeping pages. |
+| [Developer](/docs/developer) | Plugin system, REST API, settings registry. |
+
+## Troubleshooting first-run
+
+- **The wizard never appears.** The wizard only renders if no admin user exists. If you ran `migrate` against a database that already has users, sign in instead — the wizard won't reappear.
+- **Email verification mail doesn't arrive.** With no SMTP configured, NextPress prints the email payload (including the verification link) to your dev server's stdout. Copy the link out of the log. Configure SMTP under **Settings → SMTP** to send real mail; see the SMTP section under [Site admin](/docs/site-admin).
+- **`AUTH_SECRET` is missing.** Sign-in throws a 500 with a clear error in the server log. Set the env var and restart.
+- **Vercel build fails on the first deploy.** Double-check `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are present in **Environment Variables** for the Production environment (the defaults shown in the UI sometimes scope to Preview only).

@@ -1,0 +1,294 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/lib/default-colors.css";
+@import "fumadocs-ui/css/preset.css";
+@plugin "@tailwindcss/typography";
+
+/* `details-open:` — applies to an element while an ancestor <details>
+ * is open. Used by the mobile nav-drawer accordion to rotate its
+ * chevron; Tailwind 4 ships no built-in `open`-ancestor / `group-open`
+ * variant, so it's declared here. */
+@custom-variant details-open (&:where(details[open] *));
+
+/* Brand tokens — sourced from docs/branding/branding.md.
+ * Tailwind 4 reads these via the @theme directive and exposes them as
+ * utility classes (text-brand-navy, bg-brand-green, ring-brand-light-green).
+ */
+@theme {
+  --color-brand-navy: #2A3A5B;
+  --color-brand-green: #2B944F;
+  --color-brand-light-green: #E3EDE4;
+
+  --font-display: var(--font-display-loaded), ui-serif, Georgia, serif;
+
+  /* Project container sizes. Tailwind 4 maps `--container-{name}` to the
+   * `max-w-{name}` utility automatically. We define `4xl` explicitly so
+   * wider blocks (Gallery walls, hero sections, layouts that overflow the
+   * default 48rem reading column) have a documented system-wide width
+   * to reach for. Tailwind's default 4xl is 56rem; we widen to 64rem
+   * (1024px) — a comfortable desktop content width, distinctly larger
+   * than the 3xl reading column at 48rem. */
+  --container-4xl: 64rem;
+}
+
+
+@layer base {
+  /* Always reserve the vertical-scrollbar gutter on <html>. Without this,
+   * `100vw` evaluates to the FULL viewport width (including the scrollbar
+   * area), while `mx-auto` containers center inside the LAYOUT viewport
+   * (which excludes the scrollbar). A full-bleed element using
+   * `width: 100vw` with `left: 50% / -translate-x-1/2` relative to a
+   * centered ancestor then lands ~half-a-scrollbar-width too far to the
+   * left — exactly the symptom that shifts the mega-menu panel off the
+   * right edge of long pages. `scrollbar-gutter: stable` makes the
+   * scrollbar's track always reserved, so `100vw` == the layout viewport
+   * the rest of the layout is centered in. */
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    /* Prevent horizontal scroll from full-bleed elements (e.g. mega-menu
+     * panels using width: 100vw with -translate-x-1/2 to cover the
+     * viewport regardless of where their trigger sits). `overflow-x: clip`
+     * blocks horizontal overflow without breaking sticky / fixed
+     * positioning the way `overflow: hidden` would. */
+    overflow-x: clip;
+  }
+
+  /* Tailwind 4 ships `cursor: default` on <button> by default (matches the
+   * native browser default). Per project convention we want the classic
+   * pointer affordance everywhere clickable. Disabled / aria-disabled stays
+   * with not-allowed. */
+  button:not(:disabled):not([aria-disabled="true"]),
+  [role="button"]:not(:disabled):not([aria-disabled="true"]),
+  a[href],
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  button[aria-disabled="true"],
+  [role="button"]:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+
+  /* Visible focus indicator. The browser default ring is removed by
+   * Tailwind preflight, so without an explicit `:focus-visible` rule
+   * keyboard users land on invisible buttons / links. Brand-green at
+   * 2px with a 2px offset stays distinct on every surface (white card,
+   * navy footer, light-green hero) and matches the visual language of
+   * the Tiptap selection outline already in this file. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-green);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  /* Honour the OS-level reduced-motion preference. Per WCAG 2.3.3 we
+   * still allow interactive feedback to animate (so the user gets
+   * confirmation a click registered), but kill every long decorative
+   * animation / transition. The sticky-container slide-in keyframes
+   * above are decorative; this rule disables them for users who've
+   * opted out. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* Puck preview canvas — force white background; Puck's default uses a
+   grey CSS var which clashes with our editor wrapper. Targets the
+   iframe-disabled inline render path used in /admin/pages/[id]/edit. */
+#frame-root {
+  background: white !important;
+}
+
+/* Heading top-margin reset for prose surfaces.
+   Tailwind Typography ships generous `margin-top` on h2/h3 (≈1.4–1.6em).
+   That's nice between paragraphs but pushes a heading-first block
+   (RichText that opens with H2/H3, or a Heading block landing at the top
+   of a section) noticeably down inside its container — visible both in
+   the editor preview and on the public render. We zero the top margin
+   site-wide for prose-styled h2/h3 so blocks butt up cleanly to the top
+   of their wrapper. Bottom margin from prose stays so vertical rhythm
+   inside a longer article still feels right.
+
+   Specificity matters here: Typography's selector is
+   `.prose :where(h2)…` which lands at (0,1,0). The parent `.prose` /
+   `.ProseMirror` class needs to be a *real* class in our selector
+   (NOT wrapped in :where) so we land at (0,1,1) and win the cascade. */
+.prose h2,
+.prose h3,
+.ProseMirror h2,
+.ProseMirror h3 {
+  margin-top: 0;
+}
+
+/* Hide native browser scrollbars. Used by surfaces that render their
+   own custom scrollbar UI on top (see HScrollContainer in the table
+   builder) — native scrollbars are unreliable across platforms (macOS
+   auto-hides, Windows shows chunky bars, Firefox styling differs). */
+.no-native-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-native-scrollbar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Sticky Container — deferred-pin entry & exit animations.
+   When the StickyContainer is configured with `pinStart: "deferred"`,
+   the inline watcher script toggles `np-pin-enter` on the off→on
+   engagement edge and `np-pin-exit` on the on→off edge. The slide
+   keyframes make the snap-in / snap-out read as deliberate "now I'm
+   sticking" / "going back to flow" gestures rather than teleports.
+   The exit animation runs WHILE the element is still sticky-pinned
+   (the script defers the top→-99999px swap to after the animation
+   ends, otherwise sticky would disengage at frame zero and the slide
+   would have no visible target). `both` fill-mode holds the final
+   translate so the element doesn't snap back to its untransformed
+   origin between the keyframe end and the script's class removal.
+   Enter uses an ease-out curve (settle softly at the offset); exit
+   uses an ease-in curve (accelerate as it leaves) — both 320ms so a
+   rapid scroll-reverse mid-animation keeps the cadence symmetric. */
+@keyframes np-sticky-deferred-in {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
+@keyframes np-sticky-deferred-out {
+  from { transform: translateY(0); }
+  to { transform: translateY(-100%); }
+}
+.np-sticky-container.np-pin-enter {
+  animation: np-sticky-deferred-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.np-sticky-container.np-pin-exit {
+  animation: np-sticky-deferred-out 320ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+/* RichTextEditor — selected image (Tiptap NodeView). ProseMirror tags the
+   selected node with `.ProseMirror-selectednode`; without a custom rule the
+   browser shows nothing, so a click on an image looks like a no-op. The
+   brand-green outline makes selection visible and the slight offset keeps
+   the outline from clipping wide images. */
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--color-brand-green);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+/* RichText image alignment — applied via the `class` attribute on the
+   Tiptap Image node so editor preview and public render look identical.
+   Floats wrap surrounding text just like classic-WP image alignment;
+   max-width on the side floats keeps a giant image from monopolising the
+   column. The `not-prose`-equivalent margin reset on the image itself
+   prevents prose's default `img { margin: 2em 0 }` from inflating the
+   floated layout. */
+.np-align-left,
+.np-align-right,
+.np-align-center {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.np-align-left {
+  float: left;
+  margin-right: 1rem;
+  max-width: 50%;
+}
+.np-align-right {
+  float: right;
+  margin-left: 1rem;
+  max-width: 50%;
+}
+.np-align-center {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Thumbnail-mode image embed — small clickable tile that opens the
+   full-size image in a lightbox on the public render. The shadow + hover
+   border lift make it read as interactive; cursor mirrors the lightbox
+   affordance used by `.np-shortcode-img`. */
+.np-thumb-tile {
+  width: 9rem !important;
+  height: auto;
+  padding: 0.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: white;
+  cursor: zoom-in;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.np-thumb-tile:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* Media shortcodes inside RichText.
+   `.np-shortcode-img` — full-size image embed; cursor hints the click-to-zoom.
+   `.np-shortcode-thumb` — small inline thumbnail in its own button; renders
+   as a 9rem-wide tile so a [thumb] dropped into a paragraph reads as a
+   thumbnail rather than a runaway full image. The `not-prose`-equivalent
+   resets keep prose's button + img defaults from inflating margins around
+   what's meant to be an inline tile. */
+.np-shortcode-img {
+  cursor: zoom-in;
+}
+.np-shortcode-thumb {
+  display: inline-block;
+  width: 9rem;
+  margin: 0.25rem 0.5rem 0.25rem 0;
+  padding: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: white;
+  cursor: zoom-in;
+  overflow: hidden;
+  vertical-align: middle;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.np-shortcode-thumb:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+.np-shortcode-thumb img {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0;
+}
+
+/* Layout block — responsive grid wrapper used when the user sets a
+   `mobileVariant` different from the desktop `variant`. Two CSS vars
+   carry the templates, the media query swaps which one applies.
+
+   Wrapped in `@layer components` so Tailwind utility classes
+   (`max-md:hidden`, `md:hidden`, etc.) — which live in the utilities
+   layer — win whenever they're applied to the same element. Without
+   the layer, this rule's `display: grid` shadows utility `display: none`
+   because the cascade resolves later-defined rules of equal specificity
+   in source order, and the utilities file is bundled before this one. */
+@layer components {
+  .np-layout-responsive {
+    display: grid;
+    grid-template-columns: var(--np-mobile-template, 1fr);
+  }
+  @media (min-width: 768px) {
+    .np-layout-responsive {
+      grid-template-columns: var(--np-desktop-template, 1fr);
+    }
+  }
+}

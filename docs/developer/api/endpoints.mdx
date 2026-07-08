@@ -1,0 +1,114 @@
+---
+title: Endpoints
+description: Available API endpoints and their required scopes.
+---
+
+## Token introspection
+
+### `GET /api/v1/me`
+
+Returns information about the authenticated token. **No specific scope required** — any valid token can call this.
+
+**Request:**
+```bash
+curl -H "Authorization: Bearer npp_..." https://your-site.com/api/v1/me
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "scopes": ["posts:read", "media:upload"],
+    "prefix": "npp_a3f9",
+    "name": "CI deploy token",
+    "expires_at": "2027-01-01T00:00:00.000Z"
+  }
+}
+```
+
+## Posts
+
+The full posts API is documented in **[Posts API](./posts)** — request/response shapes, query filters, error codes, and worked examples.
+
+| Method | Endpoint | Scope |
+|--------|----------|-------|
+| `GET` | `/api/v1/posts` | `posts:read` |
+| `GET` | `/api/v1/posts/:id` | `posts:read` |
+| `POST` | `/api/v1/posts` | `posts:write` |
+| `PATCH` | `/api/v1/posts/:id` | `posts:write` |
+| `DELETE` | `/api/v1/posts/:id` | `posts:delete` |
+
+## Media
+
+The full media API is documented in **[Media API](./media)** — multipart uploads, MIME handling, JPEG→WebP auto-conversion, and worked examples.
+
+| Method | Endpoint | Scope |
+|--------|----------|-------|
+| `GET` | `/api/v1/media` | `media:read` |
+| `GET` | `/api/v1/media/:id` | `media:read` |
+| `POST` | `/api/v1/media` (multipart) | `media:upload` |
+| `DELETE` | `/api/v1/media/:id` | `media:delete` |
+
+## Coming later
+
+| Endpoint | Plugin |
+|----------|--------|
+| `GET /api/v1/taxonomies/:slug/terms` | Terms |
+| `GET /api/v1/forms/:id/submissions` | Forms |
+
+## Health check
+
+### `GET /api/health`
+
+Public endpoint (no authentication required). Returns engine status.
+
+```bash
+curl https://your-site.com/api/health
+```
+
+```json
+{
+  "status": "ok",
+  "engine": "nextpress",
+  "version": "1.2.8",
+  "timestamp": "2026-05-30T09:48:39.148Z"
+}
+```
+
+`version` reflects the **engine** the site is running on. For downstream forks that set `engineVersion` in `package.json`, that value is returned here (not the fork's own product version). This lets monitoring tools track which engine release is live.
+
+## Cache purge
+
+### `POST /api/cache/purge`
+
+Bearer-authenticated endpoint that invalidates every `nextpress:*` cache tag and revalidates the root layout. Intended caller is `scripts/mirror-to-turso.ts` after a DB mirror so the deployed site refreshes cached reads from the new data.
+
+**Auth:** `Authorization: Bearer $CACHE_PURGE_TOKEN`. The token comes from the `CACHE_PURGE_TOKEN` env var on the deployed site. Until it's set, the endpoint returns `503` — safe to ship unwired.
+
+```bash
+curl -X POST -H "Authorization: Bearer $CACHE_PURGE_TOKEN" \
+  https://your-site.com/api/cache/purge
+```
+
+**Response (200):**
+
+```json
+{
+  "ok": true,
+  "revalidated": {
+    "path": "/",
+    "scope": "layout",
+    "tags": ["nextpress:menus", "nextpress:pages", "nextpress:posts", "..."]
+  }
+}
+```
+
+**Errors:**
+
+| Status | Body | Cause |
+|---|---|---|
+| `401` | `{ "ok": false, "error": "unauthorized" }` | Missing or wrong bearer token (timing-safe compare) |
+| `503` | `{ "ok": false, "error": "CACHE_PURGE_TOKEN not configured" }` | Env var not set on this deployment |
+
+The tag list is hand-maintained in the route handler — when service modules add new cache tags, add them here too. Grep `_CACHE_TAG =` and `tags: [` to audit.

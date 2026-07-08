@@ -1,0 +1,288 @@
+---
+title: Posts API
+description: REST endpoints for listing, creating, updating, and deleting posts via Bearer token.
+---
+
+The posts endpoints expose the same data model the admin UI uses — title, slug, status, kind, parent (for spikes), featured image, topics, and SEO fields — over Bearer-authenticated REST.
+
+## Resource shape
+
+Every endpoint that returns a single post returns the same canonical detail shape:
+
+```json
+{
+  "data": {
+    "id": 5,
+    "title": "API Test Post",
+    "slug": "api-test-post",
+    "status": "draft",
+    "post_kind": "standalone",
+    "parent_id": null,
+    "parent_slug": null,
+    "parent_title": null,
+    "published_at": null,
+    "featured_image": null,
+    "seo_title": null,
+    "seo_description": null,
+    "seo_og_image": null,
+    "seo_canonical": null,
+    "seo_robots": "index,follow",
+    "seo_exclude_from_sitemap": false,
+    "schema_types": [],
+    "topic_ids": [],
+    "content_json": null,
+    "excerpt": "Created via REST API",
+    "created_by": "37415dd4-...",
+    "author_display_name": "Drew",
+    "created_at": "2026-05-06 19:04:13",
+    "updated_at": "2026-05-06 19:04:13",
+    "trashed_at": null,
+    "url": null
+  }
+}
+```
+
+| Field | Notes |
+|-------|-------|
+| `post_kind` | `"standalone"`, `"pillar"`, or `"spike"` |
+| `parent_id` | Required for spikes (the pillar id), forced to `null` otherwise |
+| `parent_slug` / `parent_title` | Joined from the parent pillar; convenient for building breadcrumbs |
+| `status` | `"draft"` or `"published"` |
+| `seo_robots` | One of `"index,follow"`, `"noindex,follow"`, `"index,nofollow"`, `"noindex,nofollow"` |
+| `content_json` | Puck editor tree as a JSON string; only present on detail responses |
+| `topic_ids` | Topic ids assigned to this post; only present on detail responses |
+| `url` | Public URL when published and not trashed; `null` otherwise. Spikes resolve to `/<pillar_slug>/<spike_slug>` |
+
+List responses (`GET /api/v1/posts`) omit `content_json`, `seo_og_image`, `seo_canonical`, `seo_robots`, `schema_types`, `excerpt`, and `topic_ids` to keep the payload small.
+
+## `GET /api/v1/posts`
+
+List posts. **Scope:** `posts:read`.
+
+### Query parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `view` | `live` | `live` (default) returns non-trashed posts; `trash` returns trashed rows |
+| `status` | (any) | `draft`, `published`, or `all` |
+| `kind` | (any) | `standalone`, `pillar`, `spike`, or `all` |
+| `pillar_id` | — | Restrict to children of one pillar (implies `kind=spike`) |
+| `topic_ids` | — | Comma-separated topic ids; OR semantics |
+| `author_id` | — | UUID of a single author |
+| `search` | — | Substring match against title and SEO title/description |
+| `date_from` | — | `YYYY-MM-DD`; matches `updated_at >= date_from 00:00:00` |
+| `date_to` | — | `YYYY-MM-DD`; matches `updated_at < date_to + 1 day` |
+| `page` | `1` | 1-indexed page number |
+| `page_size` | `50` | Page size (max 100) |
+
+### Example — list the first 3 published posts
+
+```bash
+curl -H "Authorization: Bearer npp_..." \
+  "https://your-site.com/api/v1/posts?status=published&page_size=3"
+```
+
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "title": "Lorem Ipsum",
+      "slug": "lorem-ipsum",
+      "status": "published",
+      "post_kind": "pillar",
+      "parent_id": null,
+      "url": "/lorem-ipsum",
+      "..."
+    }
+  ],
+  "meta": { "page": 1, "page_size": 3, "total": 12 }
+}
+```
+
+### Example — only spikes under pillar #1
+
+```bash
+curl -H "Authorization: Bearer npp_..." \
+  "https://your-site.com/api/v1/posts?pillar_id=1"
+```
+
+### Example — posts tagged with topic 4 OR 7
+
+```bash
+curl -H "Authorization: Bearer npp_..." \
+  "https://your-site.com/api/v1/posts?topic_ids=4,7"
+```
+
+## `GET /api/v1/posts/:id`
+
+Fetch a single post by id. Returns the full detail shape (including `content_json` and `topic_ids`).
+
+**Scope:** `posts:read`.
+
+```bash
+curl -H "Authorization: Bearer npp_..." \
+  "https://your-site.com/api/v1/posts/5"
+```
+
+Returns `404` with `{ "error": { "code": "not_found", ... } }` if no post matches that id (regardless of trash state).
+
+## `POST /api/v1/posts`
+
+Create a new post. **Scope:** `posts:write`.
+
+### Request body
+
+| Field | Required | Default | Notes |
+|-------|----------|---------|-------|
+| `title` | Yes | — | Max 200 characters |
+| `slug` | No | derived from `title` | Slugified server-side; max 200 chars; must be unique within its slug-namespace (root for pillar/standalone, sibling for spike) |
+| `excerpt` | No | `null` | Max 500 characters |
+| `status` | No | `"draft"` | `"draft"` or `"published"` — publishing stamps `published_at` |
+| `post_kind` | No | `"standalone"` | `"standalone"`, `"pillar"`, or `"spike"` |
+| `parent_id` | If `post_kind="spike"` | — | Must reference a non-trashed pillar |
+| `featured_image` | No | `null` | URL string (typically `/media/<id>`); doubles as og:image fallback |
+| `content_json` | No | `null` | Stringified Puck editor tree |
+| `schema_types` | No | `[]` | Array of Schema.org types to inject (e.g. `["Article"]`) |
+| `topic_ids` | No | `[]` | Topic ids to assign |
+
+### Example — create a draft pillar
+
+```bash
+curl -X POST -H "Authorization: Bearer npp_..." \
+     -H "Content-Type: application/json" \
+     -d '{
+       "title": "Getting Started with NextPress",
+       "post_kind": "pillar",
+       "excerpt": "Cluster intro for the docs pillar.",
+       "topic_ids": [4]
+     }' \
+     "https://your-site.com/api/v1/posts"
+```
+
+Returns `201 Created` with the full detail shape.
+
+### Example — create a spike under pillar #1
+
+```bash
+curl -X POST -H "Authorization: Bearer npp_..." \
+     -H "Content-Type: application/json" \
+     -d '{
+       "title": "Configuring Turso",
+       "post_kind": "spike",
+       "parent_id": 1,
+       "status": "published"
+     }' \
+     "https://your-site.com/api/v1/posts"
+```
+
+The resulting post is reachable at `/<pillar_slug>/configuring-turso` because the spike inherits its parent's slug as the URL prefix.
+
+### Error codes
+
+| Code | Status | When |
+|------|--------|------|
+| `validation_error` | 400 | Missing `title`, bad enum value, oversized field, or array-shape mismatch |
+| `slug_conflict` | 409 | A live post already owns that slug in the same namespace |
+| `slug_reserved` | 409 | The slug clashes with a system-reserved path (e.g. `admin`, `api`) |
+| `invalid_parent` | 400 | `parent_id` doesn't point at a live pillar |
+
+## `PATCH /api/v1/posts/:id`
+
+Update an existing post. **Scope:** `posts:write`.
+
+The body is a partial — only fields present in the JSON are updated. The endpoint accepts the same content fields as `POST` plus the SEO fields. Status changes route through the same `setPostStatus` path the admin UI uses, so publishing stamps `published_at` exactly once.
+
+### Request body
+
+All fields optional; mix and match:
+
+```json
+{
+  "title": "New title",
+  "slug": "new-slug",
+  "excerpt": "Updated excerpt",
+  "content_json": "{...puck tree...}",
+  "status": "published",
+  "post_kind": "spike",
+  "parent_id": 1,
+  "featured_image": "/media/abc-...",
+  "topic_ids": [4, 7],
+  "schema_types": ["Article"],
+
+  "seo_title": "Custom SEO title",
+  "seo_description": "Custom meta description",
+  "seo_og_image": "https://cdn.example.com/og.png",
+  "seo_canonical": "https://other-site.com/canonical",
+  "seo_robots": "noindex,follow",
+  "seo_exclude_from_sitemap": true
+}
+```
+
+### Example — publish a draft and set its meta description
+
+```bash
+curl -X PATCH -H "Authorization: Bearer npp_..." \
+     -H "Content-Type: application/json" \
+     -d '{ "status": "published", "seo_description": "Set via API" }' \
+     "https://your-site.com/api/v1/posts/5"
+```
+
+### Example — convert a standalone into a spike under pillar #1
+
+```bash
+curl -X PATCH -H "Authorization: Bearer npp_..." \
+     -H "Content-Type: application/json" \
+     -d '{ "post_kind": "spike", "parent_id": 1 }' \
+     "https://your-site.com/api/v1/posts/5"
+```
+
+The service rewrites `parent_id` based on the resulting kind: switching to `standalone` or `pillar` forces `parent_id` to `null` even if the body provided one.
+
+### Error codes
+
+Same as `POST` plus:
+
+| Code | Status | When |
+|------|--------|------|
+| `not_found` | 404 | No post with that id |
+
+## `DELETE /api/v1/posts/:id`
+
+Delete a post. **Scope:** `posts:delete`.
+
+By default this is a **soft delete** — the post is moved to trash and disappears from the public site. Topic post-counts are recomputed to drop this post from their totals.
+
+### Example — soft delete (move to trash)
+
+```bash
+curl -X DELETE -H "Authorization: Bearer npp_..." \
+  "https://your-site.com/api/v1/posts/5"
+```
+
+Response:
+
+```json
+{ "data": { "id": 5, "deleted": true, "force": false } }
+```
+
+The post is still in the database; an admin can restore it from `/admin/posts?view=trash`.
+
+### Example — hard delete (purge from database)
+
+```bash
+curl -X DELETE -H "Authorization: Bearer npp_..." \
+  "https://your-site.com/api/v1/posts/5?force=true"
+```
+
+Hard delete bypasses trash and removes the row. `posts_topics` rows cascade automatically. **There is no recovery path for force-deleted rows.**
+
+<Callout type="warn">
+Force-delete is intended for purging stale automation output. For human-driven editorial workflows, prefer the default soft-delete so editors can restore mistakes.
+</Callout>
+
+### Trashing a pillar
+
+If you trash a pillar that has live spikes, the spikes are **orphaned** — their `parent_id` stays set, but the public spike URL `/parent/child` will start returning 404 because the parent is no longer publishable. The admin UI surfaces these as an "Orphaned spikes" group; the same is visible via `GET /api/v1/posts?view=live&kind=spike` (look for spikes whose `parent_title` reflects a trashed pillar — they won't appear in that list because the pillar is excluded from the join).
+
+To repair the relationship: untrash the pillar, or re-parent each spike via `PATCH` with a different `parent_id`.

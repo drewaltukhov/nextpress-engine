@@ -1,0 +1,18 @@
+{
+  "slug": "crypto-beat",
+  "name": "Crypto Beat",
+  "version": "1.0.0",
+  "engine": "^1.0.0",
+  "type": "plugin",
+  "tier": "standard",
+  "dependencies": ["settings"],
+  "capabilities": {
+    "registers_admin_menu": true,
+    "registers_routes": false,
+    "exposes_hooks": []
+  },
+  "admin": {
+    "label": "Crypto Beat",
+    "icon": "M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"
+  }
+}

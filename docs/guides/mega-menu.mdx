@@ -1,0 +1,156 @@
+---
+title: Mega menus
+description: Big drop-down panels under top-level menu items — featured posts, link columns, image tiles, rich text.
+---
+
+A **mega menu** turns one top-level menu item into a wide drop-down panel that can show featured posts, multiple curated link columns, image tiles, or short editorial blurbs — anything richer than a plain submenu.
+
+NextPress ships mega menus as an opt-in plugin. Enable it on a per-menu basis, design each panel from a small set of layout templates, and the public site renders the panel on hover/focus over the matching menu item.
+
+## When to use a mega menu
+
+Reach for it when:
+
+- A pillar has more child posts (spikes) than a vertical dropdown comfortably lists.
+- You want the navigation to surface visual content — featured images, latest articles, curated grids.
+- Your top-level items map to *sections* (e.g. "Recipes", "Guides", "Reviews") rather than single destinations.
+
+Stick with a plain dropdown when:
+
+- The submenu has fewer than 5 items.
+- The site is read primarily on mobile (mega panels collapse to a vertical list there).
+- Visitors expect a flat link list — overdesigning navigation reduces clicks.
+
+## Enabling mega menus on a menu
+
+1. **Menus → \<your menu\> → Edit.**
+2. In **Menu details → Menu style**, pick **Mega menu**.
+3. Save.
+
+The footer menu hides this option — mega panels need horizontal real estate the footer doesn't have. Every other menu (including the primary nav and any user-created menu) can opt in.
+
+Switching back to **Dropdowns** later **hides** any saved panels without deleting them — flip to **Mega menu** again to restore.
+
+## Adding a panel to a top-level item
+
+With the menu in **Mega menu** style:
+
+1. In the items list, the **Edit mega panel** action appears next to each top-level item (not nested children).
+2. Click it. You land in the panel editor at `/admin/menus/<menuId>/items/<itemId>/mega`.
+3. Pick a layout from the left rail.
+4. Fill in its options on the right.
+5. **Save**.
+
+The next time a visitor hovers (or keyboard-focuses) the matching top-level item on the public site, the panel slides down beneath the header.
+
+To remove a panel later: open the editor and click **Remove panel** in the header. The menu item itself stays — it just reverts to a plain link.
+
+## Panel width
+
+Two modes, picked in the editor's left rail under the layout:
+
+| Mode | What it looks like |
+| --- | --- |
+| **Full screen width** | The panel breaks out of the nav and spans the entire viewport. Best for image-heavy layouts (Showcase) or when the content needs lots of horizontal space. |
+| **Container width** | The panel aligns to the theme's container — same edges as the header. Reads as part of the page rhythm; less attention-grabbing. |
+
+## Layouts
+
+Three layouts ship with the plugin. Pick from the cards on the left of the editor; each shows a thumbnail preview and a one-line description.
+
+### Editorial
+
+Featured post on the left, 2-column grid of recent posts on the right.
+
+| Option | Notes |
+| --- | --- |
+| **Featured post** | Pick a specific post, or leave blank to auto-select the most recent post (with an image) that matches the recent-grid filters. |
+| **Recent post count** | 2–10. |
+| **Filter recent posts by pillars** | Show only spikes (children) of these pillars. The canonical mega-menu shape, since each top-level item usually IS a pillar. |
+| **Filter recent posts by topics** | Narrow further — posts must match at least one of these topics. Combines with the pillar filter. |
+| **Recent posts style** | **List** (small thumb + title row) or **Cards** (larger image-on-top tiles). |
+| **Card thumbnail shape** (Cards only) | Rectangle 4 / 3, Wide 16 / 9, or Square 1 / 1. |
+| **Show recent-post thumbnails** (List only) | Toggle the small thumbs next to each row. The featured hero is always shown — it's the layout's visual anchor. |
+| **Show post dates** | Published date under each post title. |
+| **Show separator lines** (List only) | 1px line between rows for visual rhythm. |
+| **CTA link** | Plain link rendered below the recent grid. Optional. |
+
+When pillar filtering is on, both the auto-selected featured post AND the recent grid pull from the filtered pool — so a "Recipes" mega menu item never accidentally features a "Reviews" post.
+
+### Multi-section
+
+Three link columns + one featured-post column. The Stripe / Vercel / Supabase pattern.
+
+Each of the three columns has its own settings:
+
+| Option | Notes |
+| --- | --- |
+| **Heading** | Short uppercase eyebrow above the column. |
+| **Source** | **From Pillar** (latest spikes from a chosen pillar — refreshes as you publish) or **Manual** (curated link list). |
+| *Auto mode:* **Pillar** + **Max posts to show** | Pillar dropdown with each pillar's spike count. Limit 1–20. |
+| *Manual mode:* **Links list** + **Fill from pillar** button | Curate any combination of internal/external links. The "Fill from pillar" popover bulk-imports a pillar's spikes as a starting point — you can edit or delete rows after. |
+| **Show thumbnail** | Small image next to each row. Auto-mode rows always carry post meta; manual rows only when sourced from a pillar. |
+| **Show date** | Same applicability as thumbnail. |
+| **Show separator** | 1px divider between rows. |
+| **Column CTA** | Plain link below the rows. Optional. |
+
+Beyond the three columns:
+
+| Option | Notes |
+| --- | --- |
+| **Featured column eyebrow** | Heading above the right-most column's hero image. |
+| **Featured post** | Specific post pick. |
+| **Show featured post date** | Toggle the date below the featured title. |
+
+### Showcase
+
+3-column image tile grid (3/4 width) + sidebar (1/4 width) with curated links, optional rich-text blurb, and a CTA.
+
+**Tile grid:**
+
+| Option | Notes |
+| --- | --- |
+| **Tile grid eyebrow** | Heading above the tiles. |
+| **Tile count** | 3–9. |
+| **Filter tiles by pillars** | Same as Editorial. |
+| **Filter tiles by topics** | Same as Editorial — combines with the pillar filter. |
+| **Tile thumbnail shape** | Rectangle 4 / 3, Wide 16 / 9, or Square 1 / 1. |
+| **Show date on tiles** | Toggle the date below each tile title. |
+| **Tile grid CTA** | Plain link below the grid. Optional. |
+
+**Sidebar:**
+
+| Option | Notes |
+| --- | --- |
+| **Sidebar heading** | Short uppercase eyebrow. |
+| **Sidebar source** | **From Pillar** (latest spikes auto-listed) or **Manual** (curated). Same shape as Multi-section column source. |
+| **Show thumbnail / date / separator** | Same toggles as Multi-section, applied to sidebar rows. |
+| **Sidebar text** | Optional rich-text editor (Tiptap) — opens in a small modal. Renders below the link list with a divider between, or alone when there are no links. Use for short editorial blurbs ("Roasting tip of the week"). |
+| **CTA link** | Plain link below the sidebar. Optional. |
+
+## Link rows everywhere
+
+Wherever the editor has a URL field — sidebar links, CTA, manual column links — the row provides:
+
+- A **Label** input (narrow, ~⅓ width).
+- A **URL** input with a magnifier icon button on the right.
+- A **target** toggle (two icons): same-tab (default) / new-tab. New-tab automatically writes `rel="noopener noreferrer"` on render.
+
+Click the magnifier to open a content picker — search across all published Pages, Pillars, Spikes, and Topics. Picking writes the canonical public URL (`/<slug>` for standalones / pillars; `/<pillarSlug>/<spikeSlug>` for spikes) into the field. You can still type a manual URL — the picker is just a shortcut.
+
+## Saving & cache
+
+Saving a panel does two things:
+
+1. Persists the layout id + config to the database.
+2. Calls `revalidatePath("/", "layout")` so every theme-served public route drops its cached pre-rendered panel JSX. The next request on the public site renders the new config.
+
+Hard-refresh the public site (Cmd-Shift-R) if you don't see your change immediately — your browser may be holding an HTML response from the previous panel state.
+
+## Tips
+
+- **Start with Editorial.** It's the simplest layout and covers most "section landing" use cases — featured + recent.
+- **Use auto-mode columns when possible.** Manual columns require maintenance; auto columns refresh automatically as you publish new spikes.
+- **The featured column's hero is always shown.** "Show recent thumbnails" only governs the small thumbs in the recent grid — flipping it off doesn't drop the hero, which is the layout's visual anchor.
+- **Don't mix manual and auto rows in one column.** Pick one mode and stick with it. The toggles fall back gracefully if you do mix, but the editor experience is clearer when each column has a single source.
+- **Footer menus skip the Mega menu option.** Use Top-level only or Dropdowns there — mega panels need width the footer doesn't have.

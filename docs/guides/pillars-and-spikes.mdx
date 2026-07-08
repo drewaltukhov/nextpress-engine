@@ -1,0 +1,122 @@
+---
+title: Pillars & spikes
+description: Hub-and-spoke content — a pillar post is a long-form overview, spikes are focused sub-posts that link back to it.
+---
+
+NextPress supports a **pillar-and-spike** model for content organization. It's an alternative to nested categories or tag hierarchies, and it tends to produce a cleaner site structure for sites that publish a lot of related material.
+
+## What it is
+
+- A **pillar** is a long-form, evergreen post that covers a broad subject. Think of it as the "100-level overview" piece you want to rank for.
+- A **spike** is a shorter, focused post that drills into one specific aspect of the pillar's subject. Each spike belongs to exactly one pillar.
+
+URL pattern:
+
+| Post kind | URL |
+| --- | --- |
+| Pillar | `/<pillar-slug>` |
+| Spike | `/<pillar-slug>/<spike-slug>` |
+| Standalone post | `/<slug>` |
+
+A pillar's URL is the same shape as any post — but a spike is nested under its pillar's slug. That nesting is what makes the relationship visible to readers and search engines.
+
+## When to use pillars vs. topics
+
+| Use **pillars + spikes** when... | Use **topics** when... |
+| --- | --- |
+| You have a clear hub article and supporting articles | You're tagging posts by subject area |
+| You want the URL to express the relationship | You want a flat tag |
+| The relationship is exclusive (one pillar per spike) | A post can have many tags |
+| You want a dedicated "spike list" on the pillar page | Browse-by-subject is enough |
+
+Pillars and topics aren't mutually exclusive — a pillar can be tagged with a topic, and topic archives include pillar posts alongside standalone posts.
+
+## Creating a pillar
+
+1. **Posts → All posts → New post**.
+2. In the right rail, find the **Post kind** picker and set it to **Pillar**.
+3. Write the pillar content as you would any post — it's still a regular post under the hood.
+4. Publish.
+
+The pillar now lives at `/<slug>` and is ready for spikes to hang off of it.
+
+## Creating a spike
+
+1. **Posts → All posts → New post**.
+2. Set **Post kind** to **Spike**.
+3. A **Parent pillar** picker appears below the Post kind field. Pick the pillar this spike belongs to.
+4. Write the spike content.
+5. Publish.
+
+The spike now lives at `/<pillar-slug>/<spike-slug>`. The parent pillar **inherits** to the spike — for example, the spike automatically gets the pillar's topics applied (you can override).
+
+## What the pillar page shows
+
+When you visit a pillar's URL, the default `single-pillar` template renders:
+
+1. The pillar's **title** and **published date**.
+2. The pillar's **body** content.
+3. A **"More on this topic"** section listing every spike under the pillar, newest first.
+
+The spike list is automatic — you don't have to maintain it manually. Add a spike, it appears. Trash a spike, it disappears.
+
+The spike-list rendering is the **PostsGrid** widget configured with the **Limit to pillar** option. You can customize its layout (grid vs. list, columns, thumbnail visibility, etc.) by opening the theme builder under **Themes → \<your theme\> → Open builder → Single Pillar Post**.
+
+## What a spike page shows
+
+By default the spike's `single-post` template renders:
+
+1. The spike's **title**, **author**, **date**.
+2. The spike's **body**.
+3. A **"Part of"** breadcrumb / link back up to the pillar.
+
+The breadcrumb uses the **Breadcrumbs** widget, which sees the pillar→spike relationship and renders `Home → <Pillar title> → <Spike title>` automatically.
+
+## Re-parenting a spike
+
+To move a spike from one pillar to another:
+
+1. Open the spike in the editor.
+2. Change the **Parent pillar** picker to the new pillar.
+3. Save.
+
+The spike's URL changes from `/<old-pillar>/<spike>` to `/<new-pillar>/<spike>`. NextPress automatically creates a 301 redirect from the old URL — visitors and search engines following the old link are sent to the new one.
+
+## Converting a standalone post to a pillar (or spike)
+
+You can change a post's kind any time:
+
+| From | To | What happens |
+| --- | --- | --- |
+| Standalone → Pillar | Pillar | URL doesn't change. You can now add spikes pointing at it. |
+| Standalone → Spike | Spike | URL changes to `/<parent>/<slug>` — pick a parent in the editor. 301 redirect from the old URL. |
+| Pillar → Standalone | Standalone | URL doesn't change. **Existing spikes lose their parent** and become orphaned (their URLs return 404 until you re-parent each). The system warns you before this conversion. |
+| Pillar → Spike | Spike | URL changes; spikes orphan. The system blocks this unless the pillar has zero spikes. |
+| Spike → Standalone | Standalone | URL changes from `/<parent>/<slug>` to `/<slug>`. 301 redirect from the old URL. |
+
+## Pillar/spike across topics
+
+A pillar can belong to one or more topics. The spikes under it **inherit** those topics by default — you don't have to re-tag every spike. Edit a spike to add or remove topics independently.
+
+Topic archives include pillars and spikes alongside standalone posts. The post card distinguishes pillars with a small "Pillar" badge so visitors can spot them.
+
+## When this pattern shines
+
+- **Reference sites** with long evergreen guides + supporting deep-dives.
+- **Tutorial series** where each spike is a chapter and the pillar is the overview.
+- **Comparison hubs** ("Best X for Y") where the pillar ranks the candidates and spikes are individual reviews.
+
+It's overkill for a personal blog with a dozen unrelated posts — stick with standalone posts + topics there.
+
+## Limitations (read this before going deep)
+
+- The relationship is **one level deep**. A spike can't have its own sub-spikes. (The schema is depth-agnostic for future expansion, but the routing only resolves one level.)
+- A spike belongs to **exactly one** pillar. If two pillars cover overlapping subjects, you have to pick one parent; the other should link to the spike from its body.
+- Spike slugs are **unique per pillar**, not globally — two different pillars can each have a "history" spike, living at `/<pillar-a>/history` and `/<pillar-b>/history`.
+
+## Tips
+
+- **Don't pillarize everything.** A site with 80% pillar posts loses the visual distinction. Reserve the pillar kind for posts you actually want to position as overview content.
+- **Build the pillar first, spikes second.** Spikes need a parent — if you publish them before the pillar exists, you have to come back and update them.
+- **Cross-link spikes.** The pillar's auto-generated spike list helps visitors find sibling spikes. Linking from one spike's body to a related sibling is still worthwhile for context.
+- **The pillar URL is the "headline" URL.** Earn it. The spike URLs are deeper paths; that's the SEO signal you're trading short-URL access for hierarchy.

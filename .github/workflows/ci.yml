@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Generate plugin manifest
+        run: npm run plugins:discover
+
+      - name: Generate fumadocs sources
+        run: npx fumadocs-mdx
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Migration plan (no drift)
+        run: npm run migrate:plan
+        env:
+          TURSO_DATABASE_URL: "file:./.local/ci.db"
+
+      - name: Apply migrations to ci.db
+        # Next.js 16 stopped running the instrumentation hook (which boots
+        # the engine + applies migrations) during page collection, so any
+        # page in the prerender set whose module trace reaches a DB query
+        # crashes the build with `no such table: site_settings`. Apply
+        # migrations once up front so ci.db has the schema the prerender
+        # step needs.
+        run: npx tsx scripts/migrate.ts apply
+        env:
+          TURSO_DATABASE_URL: "file:./.local/ci.db"
+
+      - name: Build
+        run: npm run build
+        env:
+          TURSO_DATABASE_URL: "file:./.local/ci.db"

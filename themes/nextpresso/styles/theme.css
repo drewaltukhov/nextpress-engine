@@ -1,0 +1,422 @@
+/*
+ * NextPresso — typography-forward default theme.
+ *
+ * Design language borrowed from Tailwind Plus "Spotlight":
+ *   - zinc palette (zinc-50 page, white surfaces, zinc-800 headings,
+ *     zinc-600 body)
+ *   - teal-500 accent on hover
+ *   - hairline rings instead of borders (ring-1 ring-zinc-100)
+ *   - bold, tight-tracking headings
+ *   - generous spacing on a max-w-5xl content column
+ *   - system sans-serif (fast, no extra request)
+ *
+ * The engine class hooks (.np-public, .np-site-header, .np-site-footer,
+ * .np-sidebar, .np-main) are set by core-plugins/themes/render.tsx;
+ * each is scoped here. Theme-internal tokens are `--np-*` (no
+ * `-brand-` infix); the engine's user-overridable tokens are
+ * `--np-brand-*` and live alongside without conflict.
+ */
+
+:root {
+  /* Spotlight palette — primary tokens.
+   *
+   * The brand triple (accent / heading-dark / soft surface) reads via
+   * `var(--np-brand-*, <default>)`. The engine's
+   * `/api/themes/<slug>/tokens.css` route writes
+   * `--np-brand-primary` / `--np-brand-navy` / `--np-brand-light` on
+   * `:root` when a user overrides them in Settings → Style/UI.
+   * tokens.css loads AFTER theme.css (per renderActiveTheme's <head>),
+   * so the cascade picks up the user value when present; the comma-
+   * separated fallback supplies the Bookworm-palette default
+   * otherwise. The other `--np-*` tokens stay literal — they're not
+   * exposed in Settings and shouldn't drift on user edits. */
+  --np-accent:        var(--np-brand-primary, #00baa7);   /* teal-500 */
+  --np-accent-soft:   #00d3bd;                            /* teal-400 */
+  --np-heading:       var(--np-brand-navy,    #27272a);   /* zinc-800 */
+  --np-heading-strong:#18181b;                            /* zinc-900 */
+  --np-body:          #52525c;                            /* zinc-600 */
+  --np-body-strong:   #3f3f46;                            /* zinc-700 */
+  --np-muted:         #71717b;                            /* zinc-500 */
+  --np-soft:          #9f9fa9;                            /* zinc-400 */
+  --np-ring:          #e4e4e7;                            /* zinc-200 */
+  --np-ring-soft:     #f4f4f5;                            /* zinc-100 */
+  --np-surface:       var(--np-brand-light-green, #fafafa); /* zinc-50 page surface (key is `brand_light_green` per tokens.css) */
+  --np-card:          #ffffff;                            /* white card surface */
+}
+
+/* ============================================================
+ * Public shell + typography
+ * ============================================================ */
+
+.np-public {
+  background: var(--np-surface);
+  color: var(--np-body);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "kern", "liga", "calt";
+  line-height: 1.7;
+}
+
+/* Heading defaults apply ONLY to body-prose content (RichText,
+ * MDX, article body). Widgets that wrap their content in `.not-prose`
+ * — PostsGrid, SearchResults, PostListView rows — keep whatever font
+ * size the component assigned via Tailwind utilities. Without this
+ * scoping, my non-layered rules would beat Tailwind 4's
+ * `@layer utilities` regardless of specificity. */
+:where(.np-public .prose, .np-public article) :is(h1, h2, h3, h4, h5, h6):not(:is(.not-prose, .not-prose *)) {
+  color: var(--np-heading);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.np-public .prose h1:not(:is(.not-prose, .not-prose *)),
+.np-public article h1:not(:is(.not-prose, .not-prose *)) {
+  font-size: clamp(2.25rem, 4vw, 3rem);
+}
+.np-public .prose h2:not(:is(.not-prose, .not-prose *)),
+.np-public article h2:not(:is(.not-prose, .not-prose *)) {
+  font-size: clamp(1.5rem, 3vw, 1.875rem);
+}
+.np-public .prose h3:not(:is(.not-prose, .not-prose *)),
+.np-public article h3:not(:is(.not-prose, .not-prose *)) {
+  font-size: clamp(1.25rem, 2vw, 1.5rem);
+}
+.np-public .prose h4:not(:is(.not-prose, .not-prose *)),
+.np-public article h4:not(:is(.not-prose, .not-prose *)) {
+  font-size: 1.125rem;
+}
+.np-public .prose h5:not(:is(.not-prose, .not-prose *)),
+.np-public article h5:not(:is(.not-prose, .not-prose *)) {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.np-public .prose h6:not(:is(.not-prose, .not-prose *)),
+.np-public article h6:not(:is(.not-prose, .not-prose *)) {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--np-muted);
+}
+
+.np-public p:not(:is(.not-prose, .not-prose *)) {
+  color: var(--np-body);
+}
+
+/* Content-area links (article / post / page body) shift to teal on hover.
+ * The `:not(...)` clause respects Tailwind Typography's `not-prose`
+ * escape hatch — widgets that wrap content in a `.not-prose` section
+ * (PostsGrid, SearchResults, etc.) keep their own anchor styling. */
+.np-public .prose a:not(:is(.not-prose, .not-prose *)),
+.np-public .np-main article a:not(:is(.not-prose, .not-prose *)),
+.np-public .np-main p a:not(:is(.not-prose, .not-prose *)) {
+  color: var(--np-heading);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: color 150ms ease;
+}
+.np-public .prose a:not(:is(.not-prose, .not-prose *)):hover,
+.np-public .np-main article a:not(:is(.not-prose, .not-prose *)):hover,
+.np-public .np-main p a:not(:is(.not-prose, .not-prose *)):hover {
+  color: var(--np-accent);
+}
+
+/* Prose overrides — Tailwind Typography (prose-slate) bumps to the
+   Spotlight palette. Targets the standard prose CSS vars so the
+   plugin's own rules pick them up cleanly. */
+.np-public .prose {
+  --tw-prose-body:        var(--np-body);
+  --tw-prose-headings:    var(--np-heading);
+  --tw-prose-lead:        var(--np-body-strong);
+  --tw-prose-links:       var(--np-heading);
+  --tw-prose-bold:        var(--np-heading);
+  --tw-prose-counters:    var(--np-muted);
+  --tw-prose-bullets:     var(--np-soft);
+  --tw-prose-hr:          var(--np-ring-soft);
+  --tw-prose-quotes:      var(--np-heading-strong);
+  --tw-prose-quote-borders: var(--np-ring);
+  --tw-prose-captions:    var(--np-muted);
+  --tw-prose-kbd:         var(--np-heading);
+  --tw-prose-kbd-shadows: 39 39 42; /* zinc-800 in rgb */
+  --tw-prose-code:        var(--np-heading);
+  --tw-prose-pre-code:    #f4f4f5;
+  --tw-prose-pre-bg:      var(--np-heading);
+  --tw-prose-th-borders:  var(--np-ring);
+  --tw-prose-td-borders:  var(--np-ring-soft);
+}
+
+/* HTML-coded tables inside body-prose content adopt the same look as
+ * the Table widget block: outer hairline border with rounded corners,
+ * surface-tinted header band, generous cell padding, and a full grid
+ * of soft internal dividers on by default. Borders live on the cells
+ * (not the rows) because `border-collapse: separate` — which is what
+ * lets the rounded outer corners clip cleanly — drops tr/thead-level
+ * borders in most browsers. The `:not(.not-prose)` clauses keep widget
+ * tables (Table block, PostsGrid, SearchResults) on their own
+ * Tailwind-utility look. */
+.np-public .prose table:not(:is(.not-prose, .not-prose *)),
+.np-public article table:not(:is(.not-prose, .not-prose *)) {
+  width: 100%;
+  margin-block: 1rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--np-ring);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  font-size: 0.875rem;
+  color: var(--np-body);
+}
+
+.np-public .prose table:not(:is(.not-prose, .not-prose *)) thead,
+.np-public article table:not(:is(.not-prose, .not-prose *)) thead {
+  background: var(--np-surface);
+}
+
+/* Strip Tailwind Typography's per-row `border-bottom: 1px` — Chromium
+ * still draws it under `border-collapse: separate`, stacking with our
+ * cell-level top border and producing a 2px line between body rows. */
+.np-public .prose table:not(:is(.not-prose, .not-prose *)) tr,
+.np-public article table:not(:is(.not-prose, .not-prose *)) tr {
+  border: 0;
+}
+
+.np-public .prose table:not(:is(.not-prose, .not-prose *)) th,
+.np-public article table:not(:is(.not-prose, .not-prose *)) th {
+  padding: 0.625rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: var(--np-heading);
+  border: 0;
+  border-top: 1px solid var(--np-ring);
+  border-left: 1px solid var(--np-ring);
+}
+
+.np-public .prose table:not(:is(.not-prose, .not-prose *)) td,
+.np-public article table:not(:is(.not-prose, .not-prose *)) td {
+  padding: 0.625rem 1rem;
+  vertical-align: top;
+  border: 0;
+  border-top: 1px solid var(--np-ring);
+  border-left: 1px solid var(--np-ring);
+}
+
+/* Tailwind Typography adds `border-bottom: 1px` to every `thead th` by
+ * default — combined with my `border-top: 1px` on the first body row,
+ * that produces a 2px-thick seam at the header → body transition.
+ * Strip the prose-added bottom border so the seam stays at a single
+ * 1px line. */
+.np-public .prose table:not(:is(.not-prose, .not-prose *)) thead th,
+.np-public article table:not(:is(.not-prose, .not-prose *)) thead th {
+  border-top: 0;
+  border-bottom: 0;
+}
+
+/* First column / first body row have no preceding cell to share a
+ * border with — the table's outer border handles those edges. */
+.np-public .prose table:not(:is(.not-prose, .not-prose *)) th:first-child,
+.np-public .prose table:not(:is(.not-prose, .not-prose *)) td:first-child,
+.np-public article table:not(:is(.not-prose, .not-prose *)) th:first-child,
+.np-public article table:not(:is(.not-prose, .not-prose *)) td:first-child {
+  border-left: 0;
+}
+.np-public .prose table:not(:is(.not-prose, .not-prose *)) > tbody:first-child tr:first-child td,
+.np-public .prose table:not(:is(.not-prose, .not-prose *)) > tbody:first-child tr:first-child th,
+.np-public article table:not(:is(.not-prose, .not-prose *)) > tbody:first-child tr:first-child td,
+.np-public article table:not(:is(.not-prose, .not-prose *)) > tbody:first-child tr:first-child th {
+  border-top: 0;
+}
+
+/* ============================================================
+ * Header chrome
+ * ============================================================ */
+
+.np-site-header {
+  border-bottom: 1px solid var(--np-ring-soft);
+  background: var(--np-card);
+  border-bottom-left-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
+}
+
+/* Header logo + nav share a row in the default Layout; this just
+   tightens the typographic feel by lining up vertical rhythm. */
+.np-site-header,
+.np-site-header * {
+  letter-spacing: -0.01em;
+}
+
+/* ============================================================
+ * Footer chrome
+ * ============================================================ */
+
+.np-site-footer {
+  border-top: 1px solid var(--np-ring-soft);
+  background: var(--np-card);
+  color: var(--np-muted);
+  font-size: 0.875rem;
+  border-top-left-radius: 0.75rem;
+  border-top-right-radius: 0.75rem;
+}
+
+.np-site-footer a {
+  color: var(--np-body-strong);
+  transition: color 150ms ease;
+}
+.np-site-footer a:hover {
+  color: var(--np-accent);
+}
+
+/* Text widget tweaks for the footer chrome — drop the default 1rem
+ * bottom margin (gives the column its own vertical rhythm via the
+ * `py-2` spacing) so adjacent Text rows stack tight without a double
+ * gap. Stays scoped to the footer so Text widgets in sidebars / body
+ * content keep their original spacing. */
+.np-site-footer .np-text-widget {
+  margin: 0;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+/* ============================================================
+ * Sidebars — card-on-surface treatment
+ * ============================================================ */
+
+.np-sidebar {
+  background: var(--np-card);
+  border-radius: 0.75rem;          /* rounded-xl */
+  box-shadow: 0 0 0 1px var(--np-ring-soft);  /* ring-1 ring-zinc-100 */
+  padding: 1.25rem;
+}
+
+.np-sidebar > * + * {
+  margin-top: 1rem;
+}
+
+/* ============================================================
+ * Menus — restyle NavMenu (Spotlight: light, generous spacing,
+ * teal hover, hairline dropdown surfaces)
+ * ============================================================ */
+
+.np-public nav[aria-label^="Menu"] a {
+  color: var(--np-body-strong);
+  font-weight: 500;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.np-public nav[aria-label^="Menu"] a:hover {
+  color: var(--np-accent);
+}
+
+/* Submenu panels: lift to white with a hairline ring (overrides
+   the inline bg-white + border-neutral-200 in NavMenu — same
+   visual idea, theme-flavored tokens). */
+.np-public nav[aria-label^="Menu"] ul[role="menu"] {
+  background: var(--np-card);
+  border-color: var(--np-ring);
+  box-shadow: 0 10px 24px -8px rgba(24, 24, 27, 0.12);
+}
+
+/* ============================================================
+ * Widgets — generic card treatment for site-widgets that sit
+ * directly inside .np-main or inside a sidebar.
+ * ============================================================ */
+
+/* Headings inside widgets (e.g., "Recent posts" h3 in PostsGrid)
+   get the Spotlight compact-uppercase label treatment. */
+.np-sidebar h3,
+.np-sidebar [data-np-toc-skip] > h3 {
+  color: var(--np-heading);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 0.75rem;
+}
+
+/* SearchBox: cleaner ring, accent focus. */
+.np-public input[type="search"],
+.np-public input[type="text"][placeholder*="Search"] {
+  border-color: var(--np-ring);
+  background: var(--np-card);
+  border-radius: 0.5rem;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+.np-public input[type="search"]:focus,
+.np-public input[type="text"][placeholder*="Search"]:focus {
+  border-color: var(--np-accent);
+  box-shadow: 0 0 0 3px rgba(0, 186, 167, 0.15);
+  outline: none;
+}
+
+/* SocialIcons: subtle by default, accent on hover. */
+.np-public a[aria-label][rel*="noopener"] svg {
+  transition: color 150ms ease;
+}
+.np-site-footer a[aria-label] {
+  color: var(--np-soft);
+}
+.np-site-footer a[aria-label]:hover {
+  color: var(--np-accent);
+}
+
+/* ============================================================
+ * Posts list (PostsGrid + PostListView)
+ *
+ * Lift the cards onto the page surface; hover background pulled
+ * from slate-50 to Spotlight's zinc-50 via the surface variable.
+ * ============================================================ */
+
+.np-public .np-main .prose a.flex.items-start,
+.np-public .np-main a.flex.items-start.gap-4.p-4 {
+  border-bottom: 1px solid var(--np-ring-soft);
+  border-radius: 0;
+  transition: background-color 150ms ease;
+}
+.np-public a.flex.items-start:hover {
+  background-color: var(--np-surface) !important;
+}
+.np-public a.flex.items-start.gap-3:hover {
+  background-color: var(--np-surface) !important;
+}
+
+/* (The old `.np-sidebar .size-14` override that bumped sidebar
+   thumbnails to 80px is now redundant — PostsGrid exposes a
+   per-instance Thumbnail Size picker defaulting to "big" / 80px.) */
+
+/* Tighter date / meta typography. */
+.np-public .text-xs.text-slate-500,
+.np-public .text-sm.text-slate-600 {
+  color: var(--np-muted) !important;
+}
+.np-public .text-base.font-medium.text-slate-900,
+.np-public .text-sm.font-medium.text-slate-900 {
+  color: var(--np-heading) !important;
+  letter-spacing: -0.01em;
+}
+
+/* "Topic" pill — recolor from brand-light-green into a quieter
+   zinc chip. */
+.np-public .bg-brand-light-green {
+  background: var(--np-ring-soft) !important;
+  color: var(--np-heading) !important;
+}
+
+/* ============================================================
+ * Heroes (Hero block)
+ *
+ * Hero.tsx renders <section class="bg-slate-100"> by default.
+ * Soften to the page surface and tighten the heading rhythm.
+ * ============================================================ */
+
+.np-public section.not-prose.bg-slate-100 {
+  background: var(--np-surface) !important;
+}
+
+.np-public section.not-prose .max-w-3xl.text-3xl,
+.np-public section.not-prose .max-w-3xl.md\:text-5xl {
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}

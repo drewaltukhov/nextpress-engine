@@ -1,0 +1,4 @@
+{
+  "title": "Security",
+  "pages": ["index", "lockout", "ip-blocking", "step-up-auth", "hide-admin", "logs"]
+}

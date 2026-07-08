@@ -1,0 +1,47 @@
+---
+title: Themes
+description: Picking, activating, and customizing how the site looks.
+---
+
+A **theme** is the visual layer of your NextPress site — the templates, fonts, colors, and chrome (header / footer / sidebar) that wrap your content. Themes are interchangeable: switch from one theme to another and your posts, pages, and topics keep working — the chrome and templates change, the content stays the same.
+
+NextPress ships with the **NextPresso** theme out of the box. You can build your own theme as a project plugin, or install one from a third party.
+
+## What's in here
+
+| Page | What it covers |
+| --- | --- |
+| [Activating a theme](/docs/themes/activating) | Switching the active theme, what changes, what doesn't. |
+| [Theme builder](/docs/themes/theme-builder) | The drag-and-drop tool for editing each template's header, footer, sidebars, and main zone. |
+| [Widgets](/docs/themes/widgets) | The widget catalog — every block you can drop into a theme zone. |
+| [Customizing](/docs/themes/customizing) | Per-theme settings, custom templates, exporting/importing theme data. |
+
+## What lives in a theme vs. what lives in content
+
+| Lives in the **theme** | Lives in your **content** |
+| --- | --- |
+| Templates (Single Page, Single Post, Topic Archive, 404, etc.) | Page bodies, post bodies, the words you wrote |
+| Header, footer, sidebar layouts | Topics, post relationships (pillar/spike) |
+| Default fonts and colors | Featured images, OG metadata |
+| Widget arrangement on each template | The widgets' shared global settings (e.g. site title, social URLs) |
+
+Switching themes changes everything in the left column. Your content in the right column is untouched.
+
+## Activating a theme
+
+The active theme is set in **Themes → All themes → "Activate"** on the theme you want. There's always exactly one active theme.
+
+The first time you activate a theme, NextPress copies the theme's default templates and chrome into your database as editable theme data. You can then customize them in the theme builder without ever touching the theme's source files — your customizations belong to your site, not the theme.
+
+See [Activating a theme](/docs/themes/activating) for the full walkthrough.
+
+## Building / installing custom themes
+
+Themes are NextPress plugins with a `themes/<slug>/` directory and a `plugin.json`. The theme contract is covered in the [Developer → Plugin system](/docs/developer/plugins) section — that's where you'd write a custom theme from scratch.
+
+Installing a third-party theme that came as an npm package or a tarball: drop it under `themes/<theme-slug>/`, run `npm run plugins:discover`, then activate it via the admin.
+
+## Related
+
+- For the day-to-day content tasks themes display, see [Guides](/docs/guides).
+- For the underlying block registry and surface taxonomy, see [Developer → Plugin system → Theme widgets](/docs/developer/plugins/theme-widgets).

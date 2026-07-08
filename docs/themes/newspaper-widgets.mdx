@@ -1,0 +1,176 @@
+---
+title: Newspaper widgets
+description: Magazine-style post-display widgets — hero panels, section grids, tab strips, and row lists for editorial homepage and section layouts.
+---
+
+The **Newspaper** widget family is a set of four widgets designed for editorial-style layouts. They fetch posts server-side and render as magazine grids with optional overlay text, tab strips, and prev/next pagination — no client-side data fetching for the initial render.
+
+All four widgets live in the **Newspaper** category of the theme builder's widget rail.
+
+## Common concepts
+
+### Scope
+
+Every Newspaper widget lets you narrow the posts it shows:
+
+| Scope option | What it shows |
+| --- | --- |
+| **All** | Every published post (no narrowing). |
+| **By topic** | Posts that have at least one of the selected topics. |
+| **By pillar** | Spike posts (children) under the selected pillars. |
+
+Leaving the picker empty in "by topic" or "by pillar" mode is the "all of that kind" fallback — the widget still renders rather than going blank on its default state.
+
+### Display style
+
+Every Newspaper widget offers two visual modes:
+
+| Display style | How it looks |
+| --- | --- |
+| **Overlays** | Post title and meta are painted over the featured image with a color tint behind the text. Classic magazine look. |
+| **Cards** | Featured image sits above the text in a plain card. A more traditional blog-card layout. |
+
+The **Image overlay** picker (None / Black / White / Dark blue / Green / Mint) controls the tint color and is only shown when **Overlays** is active — it's hidden automatically in Cards mode because there's no image text to contrast-protect.
+
+### Shared meta toggles
+
+All four widgets share these toggles:
+
+| Toggle | Default | What it controls |
+| --- | --- | --- |
+| **Show date** | On | Published date under each post title. |
+| **Show author** | On | Author byline. |
+| **Show topic chip** | On | The post's first topic as a small chip. |
+| **Show excerpt** | Off | The post's excerpt (a short 1–2 sentence summary). Set excerpts in the post editor's **Excerpt** panel. |
+
+---
+
+## Newspaper Hero
+
+**Label in builder:** Newspaper Hero
+
+The top-of-page hero block. One dominant featured post + a grid of smaller secondary cards alongside or below it.
+
+### Layouts
+
+| Layout | Structure |
+| --- | --- |
+| **Side-by-side** | Featured card on the left (full height), 2×2 grid of small cards on the right. |
+| **Stacked** | Featured card across the full width at the top, then a 2-column grid of small cards below. |
+
+The featured (largest) slot always uses **Overlays** display style regardless of the Display style setting — the lead post keeps its dominant visual weight. The smaller cards follow whichever style you pick.
+
+### Settings
+
+| Setting | Range / options | Notes |
+| --- | --- | --- |
+| **Scope** | All / Topic / Pillar | Which posts to show. |
+| **Topics / Pillars** | Multi-picker | Shown when Scope is Topic or Pillar. |
+| **Posts to show** | 1 – 8 | Total cards including the featured slot. |
+| **Layout** | Side-by-side / Stacked | See above. |
+| **Display style** | Overlays / Cards | Applies to the secondary cards; featured is always Overlays. |
+| **Image overlay** | None / Black / White / Dark blue / Green / Mint | Shown only in Overlays mode. |
+| **Show date / author / topic / excerpt** | Yes / No | Per-element meta toggles. |
+
+### Where it can live
+
+Any zone across all templates (header, main, sidebar, footer).
+
+---
+
+## Newspaper Section
+
+**Label in builder:** Newspaper Section
+
+A single-scope section block with a labeled header, a 3-column card grid, and prev/next pagination arrows. Good for recurring content sections below the hero.
+
+### Behavior
+
+- Scopes to either topics or pillars (not both simultaneously).
+- Shows a **section header** with the scope's name (e.g. the topic or pillar title) and a custom background color option.
+- Displays cards in a 3-column grid.
+- Prev / next arrows let visitors page through older posts without a full reload.
+
+### Settings
+
+| Setting | Range / options | Notes |
+| --- | --- | --- |
+| **Scope by** | Topic / Pillar | Which filter axis to use. |
+| **Topics / Pillars** | Multi-picker | Shown based on scope selection. |
+| **Posts per page** | 2 – 6 | Cards shown per prev/next page. |
+| **Header background color** | Hex color picker | Tints the section header strip. Leave blank for the default. |
+| **Display style** | Overlays / Cards | — |
+| **Image overlay** | None / Black / … | Shown only in Overlays mode. |
+| **Show date / author / topic / excerpt** | Yes / No | — |
+
+---
+
+## Newspaper — Hero + Side List
+
+**Label in builder:** Newspaper — Hero + Side List
+
+A section block combining one large featured card on the left with a vertical list of smaller thumbnail rows on the right. Supports a **tab strip** for switching between pillars or topics without a page reload.
+
+This is the most common shape for a "lead section" that covers multiple pillars or topics — pick your pillars, get a separate tab for each, and the featured + list updates when the reader clicks a tab.
+
+### Tab strip
+
+When you pick 2 or more pillars (or topics), each one becomes a tab. Clicking a tab fetches that scope's posts and replaces the widget's content client-side.
+
+- **Show 'All' tab** — when on and 2+ scopes are selected, an "All" tab is appended that aggregates across all the selected scopes. Hidden automatically when fewer than 2 scopes are picked.
+
+### Settings
+
+| Setting | Range / options | Notes |
+| --- | --- | --- |
+| **Scope by** | Topic / Pillar | — |
+| **Topics / Pillars (ordered)** | Multi-picker | Pick order sets the tab order. |
+| **Show 'All' tab** | Yes / No | Appears only when 2+ scopes are picked. |
+| **Posts per tab** | 4 – 8 | Total posts per tab: 1 featured + remaining rows. |
+| **Header background color** | Hex color picker | — |
+| **Display style** | Overlays / Cards | — |
+| **Image overlay** | None / Black / … | Shown only in Overlays mode. |
+| **Show date / author / topic / excerpt** | Yes / No | — |
+
+---
+
+## Newspaper — Two Featured + Rows Grid
+
+**Label in builder:** Newspaper — Two Featured + Rows Grid
+
+A content-dense section block: two featured cards across the top, then a two-column grid of thumbnail rows below. Also supports a tab strip for multi-scope browsing.
+
+Good for homepage sections where you want more visual density than a single featured card provides, while still having prominent lead posts.
+
+### Layout
+
+- Two `NewspaperFeaturedCard` slots at the top (left card is slightly larger).
+- Remaining posts rendered as `NewspaperListRow` items in a 2-column grid below.
+
+### Tab strip
+
+Same as Newspaper — Hero + Side List. Picked scopes become tabs; optional "All" tab when 2+ scopes are selected.
+
+### Settings
+
+| Setting | Range / options | Notes |
+| --- | --- | --- |
+| **Scope by** | Topic / Pillar | — |
+| **Topics / Pillars (ordered)** | Multi-picker | Pick order sets the tab order. |
+| **Show 'All' tab** | Yes / No | Appears only when 2+ scopes are picked. |
+| **Posts per tab** | 5 – 10 | Total posts: 2 featured + remaining rows. |
+| **Header background color** | Hex color picker | — |
+| **Display style** | Overlays / Cards | — |
+| **Image overlay** | None / Black / … | Shown only in Overlays mode. |
+| **Show date / author / topic / excerpt** | Yes / No | — |
+
+---
+
+## Tips
+
+- **Excerpts require content.** The excerpt toggle only does something visible when posts actually have an excerpt set. Add them in **Posts → \<post\> → Excerpt** (right rail). Posts without an excerpt show nothing in that spot even when the toggle is on.
+- **Start with Newspaper Hero.** The Side layout (1 featured + 2×2 small) is the most visually impactful starting point for a homepage.
+- **Use tabs for multi-pillar sections.** If your site has 4 pillars and you want one "Latest" section that covers all of them, use Newspaper — Hero + Side List with all 4 pillars selected and "Show All tab" on.
+- **Overlay text readability.** Black overlay works for most photography; switch to Navy or Green for brand-tinted looks. None works on photos with a naturally dark area where text lands.
+- **Cards mode for minimal aesthetics.** If your design leans clean and editorial-typography-forward, Cards mode with no overlay gives a classic newspaper look.
+- **Don't stack Newspaper Hero with another Newspaper Hero.** The hero is meant to be the dominant above-the-fold block. Use Newspaper Section or the two-column variants below it to build the rest of the page.

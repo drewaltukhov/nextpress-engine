@@ -1,0 +1,15 @@
+{
+  "title": "NextPress Docs",
+  "pages": [
+    "index",
+    "getting-started",
+    "---Publishing---",
+    "guides",
+    "themes",
+    "---Running the site---",
+    "site-admin",
+    "security",
+    "---Developer---",
+    "developer"
+  ]
+}

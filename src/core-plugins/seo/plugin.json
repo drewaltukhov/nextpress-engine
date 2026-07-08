@@ -1,0 +1,14 @@
+{
+  "slug": "seo",
+  "name": "SEO",
+  "version": "1.0.0",
+  "engine": "^1.0.0",
+  "type": "plugin",
+  "tier": "essential",
+  "dependencies": ["settings"],
+  "capabilities": {
+    "registers_admin_menu": false,
+    "registers_routes": true,
+    "exposes_hooks": []
+  }
+}
