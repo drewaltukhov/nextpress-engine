@@ -18,7 +18,7 @@ NextPress runs on Node.js 22+. You'll need npm (ships with Node) and, optionally
 ### Local install
 
 ```bash
-git clone https://github.com/drewaltukhov/nextpress.git
+git clone https://github.com/drewaltukhov/nextpress-engine.git
 cd nextpress
 npm install
 cp .env.example .env.local        # fill in AUTH_SECRET — see below
@@ -33,7 +33,7 @@ Open [`http://localhost:3000/admin`](http://localhost:3000/admin) — the first-
 
 NextPress is built to deploy as a single Next.js app on Vercel's free tier. The shortest path:
 
-1. **Fork** [`drewaltukhov/nextpress`](https://github.com/drewaltukhov/nextpress) on GitHub.
+1. **Fork** [`drewaltukhov/nextpress-engine`](https://github.com/drewaltukhov/nextpress-engine) on GitHub.
 2. **Create a Turso database** (`turso db create my-site`) and grab its URL + token.
 3. **Import the project** at [vercel.com/new](https://vercel.com/new), pointing at your fork.
 4. Under **Settings → Environment Variables**, set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and `AUTH_SECRET`.
