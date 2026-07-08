@@ -36,6 +36,19 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Prepare test DB when dev.db is absent (code-only mirror)
+        # The private repo commits .local/dev.db (schema + seed), so `npm test`
+        # runs against it. The public mirror excludes dev.db, so `db()` would
+        # open an empty file and integration tests hit "no such table". When
+        # dev.db is missing, build a migrated (schema-only) ci.db and point the
+        # tests at it: seed-dependent cases skip, schema-dependent cases pass.
+        run: |
+          if [ ! -f .local/dev.db ]; then
+            echo "No committed dev.db — building a migrated ci.db for tests."
+            TURSO_DATABASE_URL="file:./.local/ci.db" npx tsx scripts/migrate.ts apply
+            echo "TURSO_DATABASE_URL=file:./.local/ci.db" >> "$GITHUB_ENV"
+          fi
+
       - name: Unit tests
         run: npm test
 
