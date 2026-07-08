@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/nextpress-logo.svg" alt="NextPress" width="360">
+  <img src="assets/nextpress-logo.png" alt="NextPress" width="360">
 </p>
 
 <h1 align="center">NextPress v1.6</h1>
@@ -141,5 +141,5 @@ settings registry, and the REST API).
 [LICENSE](LICENSE) for details and contact.
 
 <p align="center">
-  <img src="assets/nextpress-mark.svg" alt="" width="32">
+  <img src="assets/nextpress-mark.png" alt="" width="32">
 </p>
