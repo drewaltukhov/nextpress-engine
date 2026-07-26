@@ -29,6 +29,9 @@ export const posts = sqliteTable(
     seoExcludeFromSitemap: integer("seo_exclude_from_sitemap", { mode: "boolean" })
       .notNull()
       .default(false),
+    /** Editorial "Featured" flag. Newspaper hero/featured-card widgets prefer
+     *  a featured post for the lead slot. Stored as 0/1 in SQLite. */
+    isFeatured: integer("is_featured", { mode: "boolean" }).notNull().default(false),
     schemaTypes: text("schema_types").notNull().default("[]"),
     /** ISO timestamp when the post was moved to trash; NULL = live. */
     trashedAt: text("trashed_at"),

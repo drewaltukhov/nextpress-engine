@@ -54,6 +54,7 @@ const BOOLEAN_COLUMNS = new Set([
   "active",
   "diff_truncated",
   "seo_exclude_from_sitemap",
+  "is_featured",
 ]);
 
 function translateSql(sqlText: string): string {

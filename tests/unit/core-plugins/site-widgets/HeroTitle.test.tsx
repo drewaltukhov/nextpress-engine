@@ -16,6 +16,12 @@ import {
   HeroTitleBlock,
   type HeroTitleProps,
 } from "../../../../src/core-plugins/site-widgets/HeroTitle";
+// The editor fields moved to HeroTitle.fields.tsx (kept out of public bundles).
+// `resolveFields` filters whatever field set Puck holds; in the admin editor
+// that's the registered set merged back via `withAdminFields`, so source the
+// full field set from the fields module here rather than `HeroTitle.fields`
+// (now `{}` on the public config).
+import { heroTitleFields } from "../../../../src/core-plugins/site-widgets/HeroTitle.fields";
 
 type PuckRenderArg = Parameters<typeof HeroTitle.render>[0];
 
@@ -394,7 +400,7 @@ describe("HeroTitle — resolveFields conditional hiding", () => {
     return;
   }
   const resolveFields = HeroTitle.resolveFields;
-  const allFields = HeroTitle.fields;
+  const allFields = heroTitleFields;
 
   it("hides nameSource and linkAuthor when showAuthor is false", () => {
     const filtered = resolveFields(

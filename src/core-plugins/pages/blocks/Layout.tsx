@@ -4,7 +4,10 @@ import { blockSelectField } from "@core/blocks/BlockSelect";
 import { paddingField, paddingStyle, type PaddingValue, ZERO_PADDING } from "@core/blocks/PaddingField";
 import { hexColorField } from "@core/blocks/HexColorField";
 import { alignmentField, colAlignClasses, type ColAlign } from "./AlignmentField";
-import { MobileColOrderField } from "./MobileColOrderField";
+// The Mobile-column-order field (which imports MobileColOrderField → Puck's
+// usePuck → the ~0.5 MiB editor) lives in Layout.fields.tsx, imported only by
+// the admin editor. Kept out of this module so the public render path never
+// pulls the Puck editor. Merged back for the editor via withAdminFields.
 
 export type LayoutVariant =
   | "full"                    // 100% (single column — handy as a chrome-zone wrapper)
@@ -358,19 +361,6 @@ const ORDER_AT_DESKTOP: ReadonlyArray<string> = [
   "md:order-7", "md:order-8", "md:order-9", "md:order-10", "md:order-11", "md:order-12",
 ];
 
-/** Custom-field render passthrough to the client-only component.
- *  See `./MobileColOrderField.tsx` for why it has to live in its own
- *  `"use client"` file. */
-function renderMobileColOrderField({
-  value,
-  onChange,
-}: {
-  value: unknown;
-  onChange: (next: number[] | undefined) => void;
-}): React.ReactElement {
-  return <MobileColOrderField value={value} onChange={onChange} />;
-}
-
 /**
  * Compact label for the theme-builder schematic. Shows nothing when
  * there's no padding, "pad Nrem" when all four sides match, and
@@ -491,12 +481,9 @@ export const Layout: ComponentConfig<LayoutProps> = {
         { label: "max + auto",              value: "max-auto" },
       ],
     },
-    mobileColOrder: {
-      type: "custom",
-      label: "Mobile column order",
-      render: renderMobileColOrderField,
-    },
-  },
+    // mobileColOrder field is registered from Layout.fields.tsx (admin-only)
+    // so its usePuck/editor dependency stays out of public bundles.
+  } as unknown as ComponentConfig<LayoutProps>["fields"],
   defaultProps: {
     variant: "halves",
     col0: DEFAULT_ALIGN,

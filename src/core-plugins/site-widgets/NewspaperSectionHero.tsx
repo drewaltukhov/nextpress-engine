@@ -353,7 +353,7 @@ export const NewspaperSectionHero: ComponentConfig<NewspaperSectionHeroProps> = 
         <div data-np-newspaper-content>
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {featured ? (
-              <NewspaperFeaturedCard post={featured} size="large" {...cardProps} />
+              <NewspaperFeaturedCard post={featured} size="large" eagerImage {...cardProps} />
             ) : null}
             <div className="flex flex-col gap-2">
               {rows.map((p) => (

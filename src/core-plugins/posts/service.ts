@@ -107,6 +107,9 @@ export interface PostListItem {
   /** Per-post sitemap opt-out — surfaced on list rows so the sitemap
    *  iterator can filter without a second round-trip. */
   seoExcludeFromSitemap: boolean;
+  /** Editorial "Featured" flag — newspaper hero/featured-card widgets prefer a
+   *  featured post for the lead slot over the most-recent fallback. */
+  isFeatured: boolean;
   createdBy: string | null;
   authorDisplayName: string | null;
   createdAt: string;
@@ -171,7 +174,7 @@ export interface ListPostsFilters {
    *  admin list — what was edited recently. "published_at" is right for
    *  public-facing widgets — what was published recently. The trash
    *  view always orders by `trashed_at` regardless of this option. */
-  sort?: "updated_at" | "published_at";
+  sort?: "updated_at" | "published_at" | "featured_published";
 }
 
 const MAX_TITLE = 200;
@@ -211,6 +214,7 @@ function rowToListItem(row: Record<string, unknown>): PostListItem {
     seoTitle: row.seo_title != null ? String(row.seo_title) : null,
     seoDescription: row.seo_description != null ? String(row.seo_description) : null,
     seoExcludeFromSitemap: Number(row.seo_exclude_from_sitemap ?? 0) === 1,
+    isFeatured: Number(row.is_featured ?? 0) === 1,
     createdBy: row.created_by != null ? String(row.created_by) : null,
     authorDisplayName: row.author_display_name != null ? String(row.author_display_name) : null,
     createdAt: String(row.created_at),
@@ -425,11 +429,18 @@ async function listPostsRaw(
   // Sort: trash view by deletion time. Live view defaults to
   // newest-updated (right for the admin list — see HierarchicalList),
   // but `sort: "published_at"` switches to publish order for the
-  // public widget data path. `(published_at IS NULL)` puts unpublished
-  // rows last in both SQLite and Postgres without needing NULLS LAST.
+  // public widget data path. `sort: "featured_published"` is the same
+  // publish order but floats "Featured" posts to the front — used by the
+  // Newspaper widgets so a flagged post takes the hero/lead slot
+  // (`posts[0]`). `(published_at IS NULL)` puts unpublished rows last in
+  // both SQLite and Postgres without needing NULLS LAST; `is_featured DESC`
+  // reads as `1` before `0` (the PG facade coerces the boolean to 1/0).
   let orderBy: string;
   if (view === "trash") {
     orderBy = "p.trashed_at DESC, p.id DESC";
+  } else if (filters.sort === "featured_published") {
+    orderBy =
+      "p.is_featured DESC, (p.published_at IS NULL) ASC, p.published_at DESC, p.id DESC";
   } else if (filters.sort === "published_at") {
     orderBy = "(p.published_at IS NULL) ASC, p.published_at DESC, p.id DESC";
   } else {
@@ -443,7 +454,7 @@ async function listPostsRaw(
                  p.seo_title, p.seo_description, p.seo_exclude_from_sitemap,
                  p.created_by,
                  COALESCE(u.display_name, u.email, '(deleted)') AS author_display_name,
-                 p.created_at, p.updated_at, p.trashed_at, p.template
+                 p.created_at, p.updated_at, p.trashed_at, p.template, p.is_featured
           FROM posts p
           LEFT JOIN users u ON u.id = p.created_by
           LEFT JOIN posts parent ON parent.id = p.parent_id
@@ -476,7 +487,7 @@ async function getPostRaw(db: DbClient, id: number): Promise<PostDetail | null> 
                  p.schema_types,
                  p.created_by,
                  COALESCE(u.display_name, u.email, '(deleted)') AS author_display_name,
-                 p.created_at, p.updated_at, p.trashed_at, p.template
+                 p.created_at, p.updated_at, p.trashed_at, p.template, p.is_featured
           FROM posts p
           LEFT JOIN users u ON u.id = p.created_by
           LEFT JOIN posts parent ON parent.id = p.parent_id
@@ -519,7 +530,7 @@ async function getPublishedRootPostBySlugRaw(
                  p.schema_types,
                  p.created_by,
                  COALESCE(u.display_name, u.email, '(deleted)') AS author_display_name,
-                 p.created_at, p.updated_at, p.trashed_at, p.template
+                 p.created_at, p.updated_at, p.trashed_at, p.template, p.is_featured
           FROM posts p
           LEFT JOIN users u ON u.id = p.created_by
           LEFT JOIN posts parent ON parent.id = p.parent_id
@@ -575,7 +586,7 @@ export async function getPublishedSpikeBySlug(
                  p.schema_types,
                  p.created_by,
                  COALESCE(u.display_name, u.email, '(deleted)') AS author_display_name,
-                 p.created_at, p.updated_at, p.trashed_at, p.template
+                 p.created_at, p.updated_at, p.trashed_at, p.template, p.is_featured
           FROM posts p
           LEFT JOIN users u ON u.id = p.created_by
           INNER JOIN posts parent
@@ -678,6 +689,8 @@ export interface CreatePostInput {
   schemaTypes?: string[];
   topicIds?: number[];
   template?: string | null;
+  /** Editorial "Featured" flag. Defaults to false. */
+  isFeatured?: boolean;
   createdBy: string | null;
 }
 
@@ -735,8 +748,8 @@ export async function createPost(db: DbClient, input: CreatePostInput): Promise<
   const r = await db.execute({
     sql: `INSERT INTO posts
             (tenant_id, title, slug, excerpt, featured_image, status, published_at,
-             post_kind, parent_id, schema_types, template, created_by)
-          VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             post_kind, parent_id, schema_types, template, is_featured, created_by)
+          VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           RETURNING id`,
     args: [
       title,
@@ -749,6 +762,7 @@ export async function createPost(db: DbClient, input: CreatePostInput): Promise<
       parentId,
       JSON.stringify(schemaTypes),
       template,
+      input.isFeatured ? 1 : 0,
       input.createdBy,
     ],
   });
@@ -775,6 +789,8 @@ export interface UpdatePostInput {
   schemaTypes?: string[];
   topicIds?: number[];
   template?: string | null;
+  /** Editorial "Featured" flag. */
+  isFeatured?: boolean;
 }
 
 export async function updatePost(db: DbClient, id: number, input: UpdatePostInput): Promise<void> {
@@ -903,6 +919,11 @@ export async function updatePost(db: DbClient, id: number, input: UpdatePostInpu
   if (input.template !== undefined) {
     sets.push("template = ?");
     args.push(normalizeTemplateInput(input.template));
+  }
+
+  if (input.isFeatured !== undefined) {
+    sets.push("is_featured = ?");
+    args.push(input.isFeatured ? 1 : 0);
   }
 
   if (sets.length > 0) {

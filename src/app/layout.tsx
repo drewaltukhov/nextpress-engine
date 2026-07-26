@@ -7,7 +7,14 @@ import { getSetting } from "@core-plugins/settings/registry";
 const fraunces = Fraunces({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
-  variable: "--font-display-loaded"
+  variable: "--font-display-loaded",
+  // Fraunces is used in above-the-fold headings, so it's PRELOADED (next/font
+  // default): a late-arriving display font causes a visible fallback→Fraunces
+  // swap that Speed Index counts as "not yet visually complete". Preloading it
+  // lets it paint with the first render — measured SI regressed badly with
+  // preload:false on this heading-heavy theme, so we keep it on the critical
+  // path. `adjustFontFallback` (default) size-matches the fallback so the swap
+  // is shift-free.
 });
 
 // Brand-token theme colors. Light variant uses the off-white surface

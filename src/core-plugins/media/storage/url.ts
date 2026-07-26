@@ -54,3 +54,20 @@ export function toFeaturedThumbVariant(url: string | null | undefined): string |
   if (m) return `${m[1]}/thumb${m[2]}`;
   return url;
 }
+
+/**
+ * Transform a stored featured-image URL into its medium (≤1280px WebP)
+ * variant — the right size for above-the-fold hero / featured-card images
+ * where a 600px thumb would look soft but the full-resolution original is
+ * needlessly heavy. Same rules as {@link toFeaturedThumbVariant}: idempotent,
+ * preserves query/hash, and leaves non-`/media/` URLs untouched. The
+ * `/media/<id>/medium` route falls back to the original when no medium
+ * variant exists, so this is always safe.
+ */
+export function toFeaturedMediumVariant(url: string | null | undefined): string | null {
+  if (!url) return url ?? null;
+  if (/\/(?:medium|thumb)(?:[?#]|$)/.test(url)) return url;
+  const m = url.match(/^(\/media\/[^/?#]+)(\?.*|#.*|$)/);
+  if (m) return `${m[1]}/medium${m[2]}`;
+  return url;
+}

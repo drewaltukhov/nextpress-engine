@@ -36,9 +36,15 @@ import {
   getBlocksForSurface,
   listAllBlocks,
   decorateComponents,
+  withAdminFields,
   type RegisteredBlock,
   type Surface,
 } from "@core/blocks/registry";
+// Side-effect: register admin-only editor fields (Tiptap, media/link/hex
+// pickers, the Puck-editor mobile-column-order field) so withAdminFields can
+// attach them to split blocks in the theme builder — core blocks + site widgets.
+import "@core-plugins/pages/blocks/fields";
+import "@core-plugins/site-widgets/fields";
 import type {
   ThemeListItem,
   ThemeDataValue,
@@ -1222,18 +1228,21 @@ function buildSchematicConfig(
     other: { title: "Other", components: [], visible: false },
   };
 
-  return {
-    // Decorate every block with the universal hide-on-mobile /
-    // hide-on-desktop toggles. The post/page editor path picks these
-    // up via `buildPuckConfigForSurface`; the theme builder builds its
-    // schematic config inline and would otherwise miss the toggles.
+  // Decorate every block with the universal hide-on-mobile / hide-on-desktop
+  // toggles. The post/page editor path picks these up via
+  // `buildPuckConfigForSurface`; the theme builder builds its schematic config
+  // inline and would otherwise miss the toggles. `withAdminFields` then layers
+  // in the admin-only editor fields (Tiptap, the mobile-column-order field)
+  // that split blocks omit from their public modules — so RichText / Layout
+  // stay editable in theme zones without shipping the editor to public pages.
+  return withAdminFields({
     components: decorateComponents(components) as Config["components"],
     categories: categoriesObj as Config["categories"],
     root: {
       fields: {},
       render: () => <Schematic allow={allow} visibility={visibility} />,
     },
-  };
+  });
 }
 
 function Schematic({

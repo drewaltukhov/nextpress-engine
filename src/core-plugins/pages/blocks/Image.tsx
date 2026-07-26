@@ -1,6 +1,5 @@
-import type { ComponentConfig, CustomField } from "@measured/puck";
+import type { ComponentConfig } from "@measured/puck";
 import type { RegisteredBlock } from "@core/blocks/registry";
-import { MediaPickerInput } from "@core/components/MediaPicker";
 import { BlockPlaceholder } from "./_placeholder";
 import { BuilderCard } from "@core/blocks/BuilderCard";
 
@@ -14,44 +13,12 @@ export type ImageProps = {
   enableLightbox: boolean;
 };
 
-const renderMediaField: CustomField<string>["render"] = function MediaFieldRender({
-  value,
-  onChange,
-}) {
-  // `variant="stacked"` puts the action buttons (Browse / Upload /
-  // Clear) on the top row and the URL field full-width below — fits
-  // the narrow Puck inspector column better than the default inline
-  // layout. `allowUpload` enables the quick-upload button, so all
-  // three entry paths (paste URL, pick from media, quick upload) are
-  // visible at once.
-  return (
-    <MediaPickerInput
-      value={typeof value === "string" ? value : ""}
-      onChange={onChange}
-      allowUpload
-      variant="stacked"
-    />
-  );
-};
-
 export const Image: ComponentConfig<ImageProps> = {
   label: "Image",
-  fields: {
-    url: {
-      type: "custom",
-      label: "Image",
-      render: renderMediaField,
-    },
-    alt: { type: "text", label: "Alt text" },
-    enableLightbox: {
-      type: "radio",
-      label: "Click to enlarge (lightbox)",
-      options: [
-        { label: "On", value: true },
-        { label: "Off", value: false },
-      ],
-    },
-  },
+  // Editor fields (MediaPicker) live in Image.fields.tsx and merge in for the
+  // admin editor via `withAdminFields`. Empty here so the public render path —
+  // which imports this module for `render` — never pulls the media-picker UI.
+  fields: {} as ComponentConfig<ImageProps>["fields"],
   // `enableLightbox` defaults to off so existing Image blocks (saved
   // before this field was added) keep their previous behaviour — the
   // image renders as a plain `<img>` with no click handler.

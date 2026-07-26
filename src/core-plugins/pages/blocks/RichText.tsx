@@ -1,7 +1,6 @@
 import type { ComponentConfig } from "@measured/puck";
 import type { MediaSummary } from "@core-plugins/media/service";
 import type { RegisteredBlock } from "@core/blocks/registry";
-import { RichTextEditor } from "@core/components/RichTextEditor";
 import { BuilderCard } from "@core/blocks/BuilderCard";
 import { expandMediaShortcodes } from "./shortcodes";
 
@@ -19,18 +18,12 @@ interface PuckMetadataShape {
 
 export const RichText: ComponentConfig<RichTextProps> = {
   label: "Rich Text",
-  fields: {
-    html: {
-      type: "custom",
-      label: "Content",
-      render: ({ value, onChange }) => (
-        <RichTextEditor
-          value={typeof value === "string" ? value : ""}
-          onChange={onChange}
-        />
-      ),
-    },
-  },
+  // Editor fields live in RichText.fields.tsx (imports Tiptap) and are merged
+  // in for the admin editor via `withAdminFields`. Empty here so the public
+  // render path — which imports this module for `render` — never pulls Tiptap.
+  // (Cast: Puck's Fields type wants an entry per prop; the real fields are
+  // re-attached in the admin editor.)
+  fields: {} as ComponentConfig<RichTextProps>["fields"],
   defaultProps: { html: "<p>Lorem ipsum dolor sit amet…</p>" },
   // Render plain HTML server-side. Media shortcodes (`[img id]`,
   // `[thumb id]`) are expanded inline against `puck.metadata`'s media

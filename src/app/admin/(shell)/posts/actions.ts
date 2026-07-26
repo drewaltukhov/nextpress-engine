@@ -399,6 +399,8 @@ export interface CreatePostActionInput {
   status?: PostStatus;
   postKind?: PostKind;
   parentId?: number | null;
+  /** Editorial "Featured" flag. */
+  isFeatured?: boolean;
   featuredImage?: string | null;
   schemaTypes?: string[];
   topicIds?: number[];
@@ -433,6 +435,7 @@ export async function createPostAction(input: CreatePostActionInput): Promise<Sa
       status,
       postKind: input.postKind,
       parentId: input.parentId ?? null,
+      isFeatured: input.isFeatured ?? false,
       featuredImage: input.featuredImage ?? null,
       schemaTypes,
       topicIds,
@@ -478,6 +481,8 @@ export interface UpdatePostActionInput {
   excerpt?: string | null;
   postKind?: PostKind;
   parentId?: number | null;
+  /** Editorial "Featured" flag. */
+  isFeatured?: boolean;
   featuredImage?: string | null;
   /** Reassign author. Admin-only. */
   createdBy?: string | null;

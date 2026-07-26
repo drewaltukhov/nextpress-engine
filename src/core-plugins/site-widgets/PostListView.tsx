@@ -214,6 +214,7 @@ function PostListRow({
                 src={toFeaturedThumbVariant(post.featuredImage) ?? post.featuredImage}
                 alt=""
                 className="h-full w-full object-cover object-center"
+                loading="lazy"
               />
             ) : null}
           </div>
@@ -333,6 +334,7 @@ function PostCard({
               src={toFeaturedThumbVariant(post.featuredImage) ?? post.featuredImage}
               alt=""
               className={`h-full w-full object-cover object-center transition-transform duration-300 ease-out${zoomOnHover ? " group-hover:scale-105" : ""}`}
+              loading="lazy"
             />
           </div>
         ) : null}

@@ -1,8 +1,6 @@
-import type { ComponentConfig, CustomField } from "@measured/puck";
+import type { ComponentConfig } from "@measured/puck";
 import type { CSSProperties } from "react";
 import type { RegisteredBlock } from "@core/blocks/registry";
-import { MediaPickerInput } from "@core/components/MediaPicker";
-import { ContentLinkInput } from "@core/components/ContentLinkInput";
 import { BuilderCard } from "@core/blocks/BuilderCard";
 
 export type BannerTarget = "_self" | "_blank";
@@ -21,62 +19,12 @@ export type BannerProps = {
   maxWidthRem: number;
 };
 
-const renderMediaField: CustomField<string>["render"] = function MediaFieldRender({
-  value,
-  onChange,
-}) {
-  return (
-    <MediaPickerInput
-      value={typeof value === "string" ? value : ""}
-      onChange={onChange}
-      allowUpload
-      variant="preview"
-    />
-  );
-};
-
-const renderLinkField: CustomField<string>["render"] = function LinkFieldRender({
-  value,
-  onChange,
-}) {
-  return <ContentLinkInput value={typeof value === "string" ? value : ""} onChange={onChange} />;
-};
-
-const ALL_FIELDS = {
-  imageUrl: {
-    type: "custom",
-    label: "Image",
-    render: renderMediaField,
-  },
-  imageAlt: {
-    type: "text",
-    label: "Alt text",
-  },
-  href: {
-    type: "custom",
-    label: "Link URL",
-    render: renderLinkField,
-  },
-  target: {
-    type: "radio",
-    label: "Open in",
-    options: [
-      { label: "Same tab", value: "_self" },
-      { label: "New tab", value: "_blank" },
-    ],
-  },
-  maxWidthRem: {
-    type: "number",
-    label: "Max width (rem) — 0 = auto",
-    min: 0,
-    max: 96,
-    step: 1,
-  },
-} as const satisfies ComponentConfig<BannerProps>["fields"];
-
 export const Banner: ComponentConfig<BannerProps> = {
   label: "Banner",
-  fields: ALL_FIELDS,
+  // Editor fields (MediaPicker + ContentLink) live in Banner.fields.tsx and
+  // merge in for the admin editor via `withAdminFields`. Empty here so the
+  // public render path never pulls the picker UI.
+  fields: {} as ComponentConfig<BannerProps>["fields"],
   defaultProps: {
     imageUrl: "",
     imageAlt: "",

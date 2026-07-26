@@ -3,9 +3,7 @@ import { GalleryEmbed, type GalleryLayout } from "@core-plugins/galleries/compon
 import type { GalleryDetail } from "@core-plugins/galleries";
 import type { RegisteredBlock } from "@core/blocks/registry";
 import { BlockPlaceholder } from "./_placeholder";
-import { GalleryPickerField } from "./GalleryPickerField";
 import { BuilderCard } from "@core/blocks/BuilderCard";
-import { blockSelectField } from "@core/blocks/BlockSelect";
 
 export type GalleryBlockProps = {
   galleryId: number | null;
@@ -28,80 +26,12 @@ interface PuckMetadataShape {
   galleries?: Record<number, GalleryDetail>;
 }
 
-const ALL_FIELDS = {
-  galleryId: {
-    type: "custom",
-    label: "Gallery",
-    render: ({ value, onChange }) => (
-      <GalleryPickerField value={typeof value === "number" ? value : null} onChange={onChange} />
-    ),
-  },
-  layout: blockSelectField<GalleryLayout>({
-    label: "Layout",
-    options: [
-      { label: "Grid + lightbox", value: "grid-lightbox" },
-      { label: "Carousel", value: "carousel" },
-      { label: "Masonry", value: "masonry" },
-    ],
-  }),
-  columns: {
-    type: "number",
-    label: "Columns",
-    min: 1,
-    max: 12,
-  },
-  gap: {
-    type: "number",
-    label: "Gap between images (rem)",
-    min: 0,
-    max: 5,
-    step: 0.5,
-  },
-  removeRadius: {
-    type: "radio",
-    label: "Remove rounded corners",
-    options: [
-      { label: "Yes", value: true },
-      { label: "No", value: false },
-    ],
-  },
-  showCaptions: {
-    type: "radio",
-    label: "Show captions",
-    options: [
-      { label: "Show", value: true },
-      { label: "Hide", value: false },
-    ],
-  },
-  showArrows: {
-    type: "radio",
-    label: "Carousel arrows",
-    options: [
-      { label: "Show", value: true },
-      { label: "Hide", value: false },
-    ],
-  },
-  showDots: {
-    type: "radio",
-    label: "Carousel dots",
-    options: [
-      { label: "Show", value: true },
-      { label: "Hide", value: false },
-    ],
-  },
-  enableLightbox: {
-    type: "radio",
-    label: "Enlarge on tap (lightbox)",
-    options: [
-      { label: "On", value: true },
-      { label: "Off", value: false },
-    ],
-  },
-} as const satisfies ComponentConfig<GalleryBlockProps>["fields"];
-
 export const Gallery: ComponentConfig<GalleryBlockProps> = {
   label: "Gallery",
-  fields: ALL_FIELDS,
+  // Editor fields (GalleryPickerField → picker dialog) live in
+  // Gallery.fields.tsx and merge in for the admin editor via `withAdminFields`.
+  // Empty here so the public render path never pulls the picker UI.
+  fields: {} as ComponentConfig<GalleryBlockProps>["fields"],
   defaultProps: {
     galleryId: null,
     layout: "grid-lightbox",

@@ -116,6 +116,49 @@ export function registerBlock(block: RegisteredBlock): void {
   registry().set(block.name, block);
 }
 
+// ── Editor-fields registry (public/admin bundle split) ──────────────────────
+// A block's `render` is server-safe, but its `fields` (Puck inspector) pull in
+// heavy editor-only UI (Tiptap, media pickers). Those field renderers only ever
+// mount in the admin `<Puck>` editor, never in the public `<Render>`. To keep
+// that editor JS out of public bundles, a block can register with `fields: {}`
+// in its (public) module, and register the REAL fields from a separate
+// `*.fields.tsx` module that ONLY the admin editor imports. `withAdminFields`
+// merges them back for the editor. Plain static modules — no `next/dynamic`,
+// which is incompatible with this codebase's SSR/Puck `<Render>` graph.
+const FIELDS_KEY = "__nextpress_block_fields__" as const;
+
+function fieldsRegistry(): Map<string, ComponentConfig<any>["fields"]> {
+  const g = globalThis as unknown as Record<string, Map<string, ComponentConfig<any>["fields"]> | undefined>;
+  if (!g[FIELDS_KEY]) g[FIELDS_KEY] = new Map();
+  return g[FIELDS_KEY]!;
+}
+
+/** Register a block's admin-only editor fields by block name. Called from a
+ *  `*.fields.tsx` module imported exclusively by the admin editor bundle. */
+export function registerBlockFields(name: string, fields: ComponentConfig<any>["fields"]): void {
+  fieldsRegistry().set(name, fields);
+}
+
+/** Merge admin-only fields (registered via `registerBlockFields`) back into a
+ *  render-only config for use in the admin `<Puck>` editor. Public `<Render>`
+ *  never calls this, so the field modules stay out of public bundles. */
+export function withAdminFields(config: Config): Config {
+  const fr = fieldsRegistry();
+  if (fr.size === 0) return config;
+  const components: Record<string, ComponentConfig<any>> = {};
+  for (const [name, cfg] of Object.entries(config.components ?? {})) {
+    const c = cfg as ComponentConfig<any>;
+    const fields = fr.get(name);
+    // Spread-merge with the registered editor fields FIRST, then whatever was
+    // already on the config (the universal hide-on-mobile/desktop visibility
+    // toggles `decorateComponents` appends). This preserves the original field
+    // order — the block's own fields on top, the visibility toggles beneath —
+    // which is how it looked before the split.
+    components[name] = fields ? { ...c, fields: { ...fields, ...(c.fields ?? {}) } } : c;
+  }
+  return { ...config, components: components as Config["components"] };
+}
+
 /**
  * Explicit category priority. The widget rail in the theme/page
  * builder groups blocks by category and renders categories in the

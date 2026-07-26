@@ -112,7 +112,9 @@ export async function handleNewspaperPostsRequest(url: URL): Promise<Response> {
     (q.kind === "all" && q.allType === "pillar");
   const rows = await listPosts(db(), {
     status: "published",
-    sort: "published_at",
+    // Match the SSR path (fetchNewspaperData): float Featured posts to the
+    // front so tab switches keep the flagged post in the hero/lead slot.
+    sort: "featured_published",
     ...(applySpikeKind ? { kind: "spike" as const } : {}),
     ...(pillarIds ? { pillarIds } : {}),
     ...(topicIds ? { topicIds } : {}),

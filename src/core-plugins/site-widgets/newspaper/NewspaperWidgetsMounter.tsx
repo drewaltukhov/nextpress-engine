@@ -147,6 +147,9 @@ function buildSmallCard(
     const img = document.createElement("img");
     img.src = post.featuredImage;
     img.alt = "";
+    // Client tab-switch rebuild always runs post-interaction, so these are
+    // never the LCP element — lazy-load them.
+    img.loading = "lazy";
     img.className =
       "absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105";
     a.appendChild(img);
@@ -212,6 +215,9 @@ function buildSmallCardCards(
     const img = document.createElement("img");
     img.src = post.featuredImage;
     img.alt = "";
+    // Client tab-switch rebuild always runs post-interaction, so these are
+    // never the LCP element — lazy-load them.
+    img.loading = "lazy";
     img.className =
       "absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105";
     imageWrap.appendChild(img);
@@ -265,6 +271,9 @@ function buildFeaturedCard(
     const img = document.createElement("img");
     img.src = post.featuredImage;
     img.alt = "";
+    // Client tab-switch rebuild always runs post-interaction, so these are
+    // never the LCP element — lazy-load them.
+    img.loading = "lazy";
     img.className =
       "absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105";
     a.appendChild(img);
@@ -328,6 +337,9 @@ function buildFeaturedCardCards(
     const img = document.createElement("img");
     img.src = post.featuredImage;
     img.alt = "";
+    // Client tab-switch rebuild always runs post-interaction, so these are
+    // never the LCP element — lazy-load them.
+    img.loading = "lazy";
     img.className =
       "absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105";
     imageWrap.appendChild(img);

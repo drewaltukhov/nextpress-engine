@@ -29,6 +29,9 @@ export const posts = pgTable(
     seoExcludeFromSitemap: boolean("seo_exclude_from_sitemap")
       .notNull()
       .default(false),
+    /** Editorial "Featured" flag. Newspaper hero/featured-card widgets prefer
+     *  a featured post for the lead slot. Stored as 0/1 in SQLite. */
+    isFeatured: boolean("is_featured").notNull().default(false),
     schemaTypes: text("schema_types").notNull().default("[]"),
     /** ISO timestamp when the post was moved to trash; NULL = live. */
     trashedAt: text("trashed_at"),

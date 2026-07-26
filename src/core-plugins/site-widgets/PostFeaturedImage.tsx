@@ -1,4 +1,6 @@
+import ReactDOM from "react-dom";
 import type { ComponentConfig } from "@measured/puck";
+import { toFeaturedMediumVariant } from "@core-plugins/media/storage/url";
 import type { RegisteredBlock } from "@core/blocks/registry";
 import type { PostDetail } from "@core-plugins/posts";
 import { BuilderCard } from "@core/blocks/BuilderCard";
@@ -58,6 +60,12 @@ export const PostFeaturedImage: ComponentConfig<PostFeaturedImageProps> = {
     if (!url) {
       return <></>;
     }
+    const mediumUrl = toFeaturedMediumVariant(url) ?? url;
+    // This image sits at the top of the post — the LCP element. Preload it at
+    // high priority so the browser fetches it during the initial HTML parse,
+    // before it reaches this widget's markup. `ReactDOM.preload` (React 19)
+    // hoists a `<link rel="preload" as="image">` into `<head>`.
+    ReactDOM.preload(mediumUrl, { as: "image", fetchPriority: "high" });
     // Older saved blocks may not include `aspect`; fall back to the
     // previous behavior (natural aspect, no crop).
     const safeAspect: PostFeaturedImageAspect = aspect ?? "original";
@@ -65,8 +73,11 @@ export const PostFeaturedImage: ComponentConfig<PostFeaturedImageProps> = {
     if (safeAspect === "original") {
       return (
         <div className={wrapperBase}>
+          {/* Featured image sits at the top of the post — it's the LCP element,
+              so it loads eagerly with high priority and uses the ≤1280px WebP
+              medium variant (falls back to the original safely). */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={url} alt="" className="w-full object-cover" loading="lazy" />
+          <img src={mediumUrl} alt="" className="w-full object-cover" loading="eager" fetchPriority="high" />
         </div>
       );
     }
@@ -74,10 +85,11 @@ export const PostFeaturedImage: ComponentConfig<PostFeaturedImageProps> = {
       <div className={`${wrapperBase} ${ASPECT_CLASS[safeAspect]} w-full bg-slate-100`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={url}
+          src={mediumUrl}
           alt=""
           className="h-full w-full object-cover object-center"
-          loading="lazy"
+          loading="eager"
+          fetchPriority="high"
         />
       </div>
     );

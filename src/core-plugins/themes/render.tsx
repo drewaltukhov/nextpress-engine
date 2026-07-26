@@ -854,7 +854,9 @@ export async function fetchNewspaperData(
 
       const rows = await listPosts(db(), {
         status: "published",
-        sort: "published_at",
+        // Featured posts float to the front so a flagged post takes the
+        // Newspaper hero/lead slot (`posts[0]`); ties fall back to publish order.
+        sort: "featured_published",
         ...(kind ? { kind } : {}),
         ...(pillarIds ? { pillarIds } : {}),
         ...(topicIds ? { topicIds } : {}),

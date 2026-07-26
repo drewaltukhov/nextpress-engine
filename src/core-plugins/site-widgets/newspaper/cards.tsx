@@ -1,3 +1,4 @@
+import ReactDOM from "react-dom";
 import type { NewspaperPost } from "./types";
 import {
   formatDate,
@@ -6,7 +7,7 @@ import {
   DEFAULT_TIMEZONE,
   type DateFormat,
 } from "@core/datetime";
-import { toFeaturedThumbVariant } from "@core-plugins/media/storage/url";
+import { toFeaturedThumbVariant, toFeaturedMediumVariant } from "@core-plugins/media/storage/url";
 
 export type NewspaperDisplayStyle = "overlays" | "cards";
 
@@ -82,6 +83,7 @@ export function NewspaperFeaturedCard({
   overlayClass,
   overlayIsDark,
   displayStyle,
+  eagerImage,
 }: CardCommonProps & {
   size: "hero" | "large" | "medium";
   // Optional aspect override — accepted as a CSS `aspect-ratio` value
@@ -91,6 +93,11 @@ export function NewspaperFeaturedCard({
   // arbitrary `aspect-[${var}]` class would otherwise be stripped at
   // build time.
   aspectOverride?: string;
+  // The section that owns the page's lead image (Newspaper Section Hero)
+  // sets this so its `size="large"` featured card loads eagerly with high
+  // priority — it's the LCP element / above the fold. Featured cards in
+  // lower sections leave it unset and lazy-load.
+  eagerImage?: boolean;
 }) {
   const aspectClass = aspectOverride
     ? ""
@@ -110,6 +117,26 @@ export function NewspaperFeaturedCard({
         : "text-md md:text-xl font-semibold leading-tight";
   const dateLabel = showDate ? fmtDate(post.publishedAt, dateFormat, timezone) : null;
 
+  // The hero-size featured card (and any card the section explicitly marks
+  // via `eagerImage`) is the above-the-fold lead — its image is the page's
+  // LCP element, so it loads eagerly with high priority. All other featured
+  // cards sit lower in sections and lazy-load like grid cards.
+  const isPriority = size === "hero" || eagerImage === true;
+  const imgLoading = isPriority ? "eager" : "lazy";
+  const imgPriority = isPriority ? "high" : undefined;
+  // Featured cards are prominent — serve the ≤1280px WebP medium variant
+  // instead of the full-resolution original (falls back to original safely).
+  const cardImg = toFeaturedMediumVariant(post.featuredImage) ?? post.featuredImage ?? undefined;
+
+  // The priority (above-the-fold lead) card holds the page's LCP image. Emit a
+  // high-priority image preload so the browser starts fetching it during the
+  // initial HTML parse — before it reaches this widget's markup. `ReactDOM.preload`
+  // (React 19) hoists a `<link rel="preload" as="image">` into `<head>` and
+  // dedupes by href, so rendering it here is safe even if called more than once.
+  if (isPriority && cardImg) {
+    ReactDOM.preload(cardImg, { as: "image", fetchPriority: "high" });
+  }
+
   if (displayStyle === "cards") {
     // "Cards" mode: plain image on top, text block below. The text
     // block lives on a white card body so the layout stays readable
@@ -127,9 +154,11 @@ export function NewspaperFeaturedCard({
           {post.featuredImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={post.featuredImage}
+              src={cardImg}
               alt=""
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              loading={imgLoading}
+              fetchPriority={imgPriority}
             />
           ) : null}
         </div>
@@ -169,9 +198,11 @@ export function NewspaperFeaturedCard({
       {post.featuredImage ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={post.featuredImage}
+          src={cardImg}
           alt=""
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading={imgLoading}
+          fetchPriority={imgPriority}
         />
       ) : null}
       {overlayClass ? <div className={`absolute inset-0 ${overlayClass}`} /> : null}
@@ -223,6 +254,9 @@ export function NewspaperSmallCard({
         ? "aspect-square"
         : "aspect-[16/10] w-full md:aspect-auto md:h-full";
   const dateLabel = showDate ? fmtDate(post.publishedAt, dateFormat, timezone) : null;
+  // Small grid cards are never the LCP element — serve the 600px WebP thumb
+  // (never the full-size original) and lazy-load below the fold.
+  const cardImg = toFeaturedThumbVariant(post.featuredImage) ?? post.featuredImage ?? undefined;
 
   if (displayStyle === "cards") {
     // "Cards" mode: plain image at top, text block underneath.
@@ -242,9 +276,10 @@ export function NewspaperSmallCard({
           {post.featuredImage ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={post.featuredImage}
+              src={cardImg}
               alt=""
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              loading="lazy"
             />
           ) : null}
         </div>
@@ -281,9 +316,10 @@ export function NewspaperSmallCard({
       {post.featuredImage ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={post.featuredImage}
+          src={cardImg}
           alt=""
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
         />
       ) : null}
       {overlayClass ? <div className={`absolute inset-0 ${overlayClass}`} /> : null}

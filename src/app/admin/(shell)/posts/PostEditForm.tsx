@@ -263,6 +263,11 @@ export function PostEditForm({
     initial?.publishedAt ? toLocalInput(initial.publishedAt) : toLocalInput(new Date().toISOString()),
   );
 
+  // ── Featured flag ──────────────────────────────────────────────────────
+  // Editorial "Featured" toggle (Publish section, under Post Date). Newspaper
+  // hero/featured-card widgets float featured posts to the lead slot.
+  const [isFeatured, setIsFeatured] = useState(initial?.isFeatured ?? false);
+
   // ── Featured image ─────────────────────────────────────────────────────
   // Doubles as og:image fallback when seoOgImage is unset (the public
   // metadata layer handles that resolution). Stored as a URL via the
@@ -411,6 +416,7 @@ export function PostEditForm({
       template,
       authorId,
       postDate,
+      isFeatured,
       featuredImage,
       excerpt,
       topicIdsKey: JSON.stringify([...topicIds].sort((a, b) => a - b)),
@@ -445,7 +451,7 @@ export function PostEditForm({
   function buildRevisionSnapshot() {
     return {
       title, status, postKind, parentId, template, authorId, postDate,
-      featuredImage, excerpt, topicIds,
+      isFeatured, featuredImage, excerpt, topicIds,
       seoTitleExplicit, seoTitleDirty, seoDescription, seoOgImage,
       seoRobots, seoExcludeFromSitemap, schemaTypes,
       contentJson: JSON.stringify(puckData),
@@ -461,6 +467,7 @@ export function PostEditForm({
     template !== baseline.template ||
     authorId !== baseline.authorId ||
     postDate !== baseline.postDate ||
+    isFeatured !== baseline.isFeatured ||
     featuredImage !== baseline.featuredImage ||
     excerpt !== baseline.excerpt ||
     JSON.stringify([...topicIds].sort((a, b) => a - b)) !== baseline.topicIdsKey ||
@@ -569,6 +576,7 @@ export function PostEditForm({
       authorId,
       postDate: postDateToSave,
       contentJson: JSON.stringify(puckData),
+      isFeatured,
       featuredImage: featuredToSave,
       postKind,
       parentId: postKind === "spike" ? parentId : null,
@@ -598,6 +606,7 @@ export function PostEditForm({
           excerpt: payload.excerpt ?? undefined,
           postKind: payload.postKind,
           parentId: payload.parentId,
+          isFeatured: payload.isFeatured,
           featuredImage: payload.featuredImage,
           schemaTypes: payload.schemaTypes,
           topicIds: permissions.canAssignTopics ? payload.topicIds : undefined,
@@ -654,6 +663,7 @@ export function PostEditForm({
         contentJson: payload.contentJson,
         postKind: payload.postKind,
         parentId: payload.parentId,
+        isFeatured: payload.isFeatured,
         featuredImage: payload.featuredImage,
         createdBy:
           permissions.isAdmin && payload.authorId !== initial.createdBy
@@ -1067,6 +1077,22 @@ export function PostEditForm({
                         </p>
                       </div>
                     )}
+
+                    <div className="flex items-start justify-between gap-3 pt-3 border-t border-slate-100">
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium text-slate-700">
+                          Featured
+                        </div>
+                        <div className="text-[11px] text-slate-500 mt-0.5">
+                          Newspaper widgets put featured posts in the hero spot ahead of the rest.
+                        </div>
+                      </div>
+                      <Switch
+                        checked={isFeatured}
+                        onCheckedChange={setIsFeatured}
+                        aria-label="Featured post"
+                      />
+                    </div>
                   </div>
                 </Card>
 

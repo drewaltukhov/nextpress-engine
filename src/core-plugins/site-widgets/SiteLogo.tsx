@@ -1,6 +1,5 @@
 import type { ComponentConfig } from "@measured/puck";
 import type { RegisteredBlock } from "@core/blocks/registry";
-import { MediaPickerInput } from "@core/components/MediaPicker";
 import { BuilderCard } from "@core/blocks/BuilderCard";
 
 export type SiteLogoProps = {
@@ -23,36 +22,10 @@ interface PuckMetadataShape {
 
 export const SiteLogo: ComponentConfig<SiteLogoProps> = {
   label: "Site Logo",
-  fields: {
-    imageUrl: {
-      type: "custom",
-      label: "Logo image",
-      render: ({ value, onChange }) => (
-        <MediaPickerInput
-          value={typeof value === "string" ? value : ""}
-          onChange={onChange}
-          allowUpload
-          variant="preview"
-        />
-      ),
-    },
-    alt: { type: "text", label: "Alt text" },
-    href: { type: "text", label: "Link target" },
-    height: { type: "number", label: "Height (px)", min: 16, max: 200 },
-    mobileImageUrl: {
-      type: "custom",
-      label: "Mobile logo (optional)",
-      render: ({ value, onChange }) => (
-        <MediaPickerInput
-          value={typeof value === "string" ? value : ""}
-          onChange={onChange}
-          allowUpload
-          variant="preview"
-        />
-      ),
-    },
-    mobileHeight: { type: "number", label: "Mobile height (px)", min: 16, max: 200 },
-  },
+  // Editor fields (MediaPicker) live in SiteLogo.fields.tsx and merge in for
+  // the admin editor via `withAdminFields`. Empty here so the public render
+  // path never pulls the picker UI.
+  fields: {} as ComponentConfig<SiteLogoProps>["fields"],
   defaultProps: { imageUrl: "", alt: "Site logo", href: "/", height: 36, mobileImageUrl: "", mobileHeight: 28 },
   render: ({ imageUrl, alt, href, height, mobileImageUrl, mobileHeight, puck }) => {
     const md = (puck?.metadata ?? {}) as PuckMetadataShape;
