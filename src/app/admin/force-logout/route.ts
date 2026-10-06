@@ -21,9 +21,15 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function GET(req: NextRequest) {
   const reason = req.nextUrl.searchParams.get("reason") ?? "expired";
 
-  const loginUrl = new URL("/admin/login", req.url);
-  loginUrl.searchParams.set("reason", reason);
-  const res = NextResponse.redirect(loginUrl);
+  // Relative Location on purpose: behind the Dokploy/Traefik proxy,
+  // `req.url` carries the container's internal origin (localhost:3000), so
+  // an absolute URL built from it sends live users to https://localhost:3000.
+  // Middleware redirects get relativized by Next.js; route handlers don't.
+  const params = new URLSearchParams({ reason });
+  const res = new NextResponse(null, {
+    status: 307,
+    headers: { Location: `/admin/login?${params}` },
+  });
 
   // Clear every Auth.js cookie under both dev (http) and prod (https) names
   // so this works regardless of deployment scheme. The session token, CSRF

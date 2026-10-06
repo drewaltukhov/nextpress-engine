@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 import { db } from "@core/db/instance";
 
 /**
@@ -13,7 +13,14 @@ import { db } from "@core/db/instance";
  * actually are in a post-reset state). Otherwise this would be an
  * unauthenticated way for anyone to log out arbitrary admins.
  */
-export async function GET(req: NextRequest) {
+// Relative Location: behind the Dokploy/Traefik proxy `req.url` is the
+// container's internal origin (localhost:3000), so absolute redirects built
+// from it leak that host to the browser. See /admin/force-logout/route.ts.
+function relativeRedirect(path: string): NextResponse {
+  return new NextResponse(null, { status: 307, headers: { Location: path } });
+}
+
+export async function GET() {
   let setupComplete = true;
   try {
     const r = await db().execute({
@@ -28,10 +35,10 @@ export async function GET(req: NextRequest) {
   }
 
   if (setupComplete) {
-    return NextResponse.redirect(new URL("/admin", req.url));
+    return relativeRedirect("/admin");
   }
 
-  const res = NextResponse.redirect(new URL("/admin/setup", req.url));
+  const res = relativeRedirect("/admin/setup");
 
   res.cookies.delete("authjs.session-token");
   res.cookies.delete("__Secure-authjs.session-token");
