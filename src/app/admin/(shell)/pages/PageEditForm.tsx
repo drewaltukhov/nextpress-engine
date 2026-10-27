@@ -717,7 +717,7 @@ export function PageEditForm({
         </div>
 
         {sidebarOpen ? (
-          <div className="w-[300px] shrink-0 h-full overflow-y-auto space-y-4 pb-1">
+          <div className="relative w-[300px] shrink-0 h-full overflow-y-auto space-y-4 pb-1">
             <button
               type="button"
               onClick={() => setSidebarOpen(false)}
