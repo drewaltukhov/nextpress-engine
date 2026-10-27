@@ -51,6 +51,7 @@ import { MediaPickerInput } from "@core/components/MediaPicker";
 import { Switch } from "@/components/ui/switch";
 import { saveRevisionAction } from "../revisions/actions";
 import { useConfirm } from "@core/components/ConfirmDialog";
+import { useFillViewport } from "@core/components/use-fill-viewport";
 import type {
   PostDetail,
   PostStatus,
@@ -304,6 +305,8 @@ export function PostEditForm({
 
   // ── Sidebar / inspector chrome (copied behaviour from PageEditForm) ────
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  // The editor block fits the window; its columns scroll on their own.
+  const { ref: editorRef, height: editorHeight } = useFillViewport<HTMLDivElement>();
   // Default compact width for most block types. Selecting a RichText
   // block automatically expands the inspector to a writing-surface
   // width (~720px) via WritingModeController; on exit, the inspector
@@ -833,9 +836,13 @@ export function PostEditForm({
             enabled={inspectorPosition === "sidebar"}
             onWritingModeChange={handleWritingModeChange}
           />
-          <div className="flex gap-4">
-            <div className="flex-1 min-w-0">
-              <div className="rounded-xl bg-white border border-slate-200 overflow-hidden h-[calc(100vh-7rem)] flex">
+          <div
+            ref={editorRef}
+            className="flex gap-4"
+            style={editorHeight ? { height: editorHeight } : undefined}
+          >
+            <div className="flex-1 min-w-0 h-full">
+              <div className="rounded-xl bg-white border border-slate-200 overflow-hidden h-full flex">
                 <div className="w-55 shrink-0 border-r border-slate-200 bg-slate-50/40 overflow-y-auto">
                   <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 border-b border-slate-200 bg-white sticky top-0 z-20">
                     Widgets
@@ -861,7 +868,7 @@ export function PostEditForm({
             </div>
 
             {sidebarOpen ? (
-              <div className="w-[300px] shrink-0 space-y-4">
+              <div className="w-[300px] shrink-0 h-full overflow-y-auto space-y-4 pb-1">
                 <button
                   type="button"
                   onClick={() => setSidebarOpen(false)}

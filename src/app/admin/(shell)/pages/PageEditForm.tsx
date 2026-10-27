@@ -44,6 +44,7 @@ import { normalizeSlug } from "@core/slugs/normalize";
 import { MediaPickerInput } from "@core/components/MediaPicker";
 import { Switch } from "@/components/ui/switch";
 import { useConfirm } from "@core/components/ConfirmDialog";
+import { useFillViewport } from "@core/components/use-fill-viewport";
 import { saveRevisionAction } from "../revisions/actions";
 import type { PageDetail, PageStatus, PageRobots } from "@core-plugins/pages";
 
@@ -149,6 +150,8 @@ export function PageEditForm({
   // (Draft / Save) keep their position regardless — only the body sidebar
   // collapses to a narrow expand-rail.
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  // The editor block fits the window; its columns scroll on their own.
+  const { ref: editorRef, height: editorHeight } = useFillViewport<HTMLDivElement>();
 
   // ── Sidebar inspector width ────────────────────────────────────────────
   // Width of the right rail that hosts <Puck.Fields /> in sidebar mode.
@@ -667,12 +670,16 @@ export function PageEditForm({
         enabled={inspectorPosition === "sidebar"}
         onWritingModeChange={handleWritingModeChange}
       />
-      <div className="flex gap-4">
-        <div className="flex-1 min-w-0">
+      <div
+            ref={editorRef}
+            className="flex gap-4"
+            style={editorHeight ? { height: editorHeight } : undefined}
+          >
+        <div className="flex-1 min-w-0 h-full">
           {/* Editor fills the viewport height minus the breadcrumb + title
               row above so the canvas feels "full screen" while editing.
               Each inner rail has its own overflow so they scroll independently. */}
-          <div className="rounded-xl bg-white border border-slate-200 overflow-hidden h-[calc(100vh-7rem)] flex">
+          <div className="rounded-xl bg-white border border-slate-200 overflow-hidden h-full flex">
             {/* Widget library — narrow rail. Scrolls independently when long. */}
             <div className="w-55 shrink-0 border-r border-slate-200 bg-slate-50/40 overflow-y-auto">
               <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 border-b border-slate-200 bg-white sticky top-0 z-20">
@@ -710,7 +717,7 @@ export function PageEditForm({
         </div>
 
         {sidebarOpen ? (
-          <div className="w-[300px] shrink-0 space-y-4">
+          <div className="w-[300px] shrink-0 h-full overflow-y-auto space-y-4 pb-1">
             <button
               type="button"
               onClick={() => setSidebarOpen(false)}
