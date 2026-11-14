@@ -8,7 +8,8 @@
  *
  * Thresholds are hardcoded constants until site_settings ships (Phase 6).
  */
-import { unstable_cache, updateTag } from "next/cache";
+import { unstable_cache } from "next/cache";
+import { invalidateCacheTag } from "@core/cache/invalidate";
 import type { DbClient } from "@core/db/client";
 import { cacheOrFallback } from "@core/caching/with-fallback";
 import { systemLog } from "@core-plugins/logging";
@@ -99,11 +100,12 @@ export interface IpAccessResult {
  *   3. If country filter is on AND ip's country fails the rule → country_blocked
  *   4. Otherwise → ok
  *
- * Country lookups: callers running on Vercel (or behind any proxy that sets
- * `x-vercel-ip-country`) should pass `countryHint` — Vercel's edge already
- * classified the IP and the header is unspoofable. When `countryHint` is
- * unset, `countryFor` returns null (geo lookup removed); country filtering
- * fails-open for self-hosted deploys without the header.
+ * Country lookups: only the public-access gate (`checkPublicAccessForRequest`)
+ * passes a `countryHint`, from `getClientCountry` (`x-vercel-ip-country` on
+ * Vercel; elsewhere Cloudflare's `cf-ipcountry`, overwritten at Cloudflare's
+ * edge but settable by a client that reaches the origin directly). The
+ * login and Bearer callers pass none, so `countryFor` returns null (geo lookup removed) and the
+ * country filter fails open there.
  */
 // ─── Process-scoped allowed_ips cache ──────────────────────────────────────
 // Read on every public-path request (and on every login-failure auto-block
@@ -125,11 +127,7 @@ function allowedCidrsAge(): number {
 
 function invalidateAllowedCidrsCache(): void {
   setAllowedCidrs(null);
-  try {
-    updateTag(IP_ACCESS_CACHE_TAG);
-  } catch {
-    // non-Server-Action context — in-process clear is enough
-  }
+  invalidateCacheTag(IP_ACCESS_CACHE_TAG);
 }
 
 async function loadAllowedCidrsRaw(db: DbClient): Promise<string[]> {
@@ -219,9 +217,9 @@ async function checkCountryFilter(
   const codes = parseCountryCodes(codesRaw ?? "");
   if (codes.size === 0) return null;
 
-  // Prefer the caller's hint (Vercel sets x-vercel-ip-country at the edge,
-  // unspoofable). Without a hint, countryFor returns null and the filter
-  // fails-open.
+  // Prefer the caller's hint (the platform's edge country header via
+  // getClientCountry). Without a hint, countryFor returns null and the filter
+  // fails open.
   const hinted = countryHint?.trim().toUpperCase();
   const country = hinted && /^[A-Z]{2}$/.test(hinted) ? hinted : await countryFor(ip);
   if (!country) return null;

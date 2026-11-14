@@ -44,6 +44,7 @@ import {
   articleJsonLd,
   faqPageJsonLd,
   breadcrumbJsonLd,
+  serializeJsonLd,
 } from "@core-plugins/seo/metadata";
 import { UnthemedShell } from "@core/components/UnthemedShell";
 import type { PageDetail } from "./service";
@@ -206,7 +207,7 @@ export function PageJsonLd(args: BuildPageJsonLdArgs): ReactNode {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(wrapJsonLdGraph(nodes)) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(wrapJsonLdGraph(nodes)) }}
     />
   );
 }

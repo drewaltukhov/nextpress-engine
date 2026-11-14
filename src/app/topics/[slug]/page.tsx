@@ -16,7 +16,7 @@ import { ImageLightboxMounter } from "@core-plugins/pages/blocks/ImageLightboxMo
 import { getTopicBySlug } from "@core-plugins/topics";
 import { listPosts } from "@core-plugins/posts";
 import { renderActiveTheme } from "@core-plugins/themes";
-import { breadcrumbJsonLd, renderTitleFormat, wrapJsonLdGraph } from "@core-plugins/seo/metadata";
+import { breadcrumbJsonLd, renderTitleFormat, serializeJsonLd, wrapJsonLdGraph } from "@core-plugins/seo/metadata";
 import { resolveDefaultOgImage } from "@core-plugins/seo/og-image";
 import { resolveSiteUrl } from "@core/site-url";
 import { UnthemedShell } from "@core/components/UnthemedShell";
@@ -115,7 +115,7 @@ export default async function TopicArchivePage({ params, searchParams }: RoutePa
   // (skips the localhost-defaulted dev case where the URL would be empty).
   const jsonLd =
     trimmedSiteUrl &&
-    JSON.stringify(
+    serializeJsonLd(
       wrapJsonLdGraph([
         {
           "@type": "CollectionPage",

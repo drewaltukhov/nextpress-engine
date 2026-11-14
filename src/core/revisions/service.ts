@@ -7,12 +7,18 @@ export interface RevisionRow {
   createdAt: string;
 }
 
+/** A single revision plus the item it belongs to. */
+export interface RevisionWithTarget extends RevisionRow {
+  kind: "post" | "page";
+  contentId: number;
+}
+
 export async function getRevision(
   db: DbClient,
   id: number,
-): Promise<RevisionRow | null> {
+): Promise<RevisionWithTarget | null> {
   const r = await db.execute({
-    sql: `SELECT id, snapshot, created_by, created_at
+    sql: `SELECT id, kind, content_id, snapshot, created_by, created_at
           FROM content_revisions WHERE id = ? LIMIT 1`,
     args: [id],
   });
@@ -20,6 +26,8 @@ export async function getRevision(
   if (!row) return null;
   return {
     id: Number(row.id),
+    kind: String(row.kind) === "page" ? "page" : "post",
+    contentId: Number(row.content_id),
     snapshot: String(row.snapshot),
     createdBy: row.created_by ? String(row.created_by) : null,
     createdAt: String(row.created_at),

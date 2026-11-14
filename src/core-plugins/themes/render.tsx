@@ -51,6 +51,8 @@ import {
 import { getBootBus } from "@core/boot";
 import "./render-types"; // ensure FilterMap declaration is visible
 import { getSetting } from "@core-plugins/settings/registry";
+import { buildUserOverridesCss, escapeInlineCss, rebaseCssUrls } from "./user-overrides-css";
+import { buildThemeTokensCss } from "./tokens-css";
 import { resolveSiteUrl } from "@core/site-url";
 import {
   DEFAULT_DATE_FORMAT,
@@ -1575,11 +1577,27 @@ export async function renderActiveTheme(
       : { className: cs.className };
   })();
 
+  // Resolve the featured image's intrinsic dimensions so PostFeaturedImage
+  // can reserve its aspect-ratio box — the eager, high-priority LCP image
+  // otherwise shifts content in as it loads (CLS). Only fires when a post
+  // with a featured image is on the route.
+  let featuredImageDims: { width: number; height: number } | null = null;
+  const featuredMediaId = ctx.post?.featuredImage?.match(
+    /\/media\/([0-9a-fA-F-]{36})/,
+  )?.[1];
+  if (featuredMediaId) {
+    const fm = await getMediaById(db(), featuredMediaId);
+    if (fm?.width && fm?.height) {
+      featuredImageDims = { width: fm.width, height: fm.height };
+    }
+  }
+
   const metadata = {
     galleries,
     media,
     menus,
     megaPanels,
+    featuredImageDims,
     themeContainer: themeContainerForMetadata,
     postsGrid,
     newspaper,
@@ -1799,11 +1817,67 @@ export async function renderActiveTheme(
     </div>
   );
 
+  // Brand tokens + user-override CSS are small and settings-derived, so we
+  // inline them into <head> as <style> instead of emitting two extra
+  // render-blocking <link> requests to /api/themes/*. Only the larger,
+  // static theme.css stays a (cached) link. Both bodies are cheap here —
+  // settings are bulk-cached. `<` can't appear in tokens (sanitized); in
+  // override CSS every `</` is escaped (see escapeInlineCss) so no input can
+  // close the <style> element.
+  const [themeTokensCss, userOverridesCss] = await Promise.all([
+    buildThemeTokensCss(db(), slug),
+    buildUserOverridesCss(db(), slug),
+  ]);
+  // Relative url()s keep resolving against the stylesheet route they were
+  // written for (see rebaseCssUrls), not against the current page.
+  const safeOverridesCss = escapeInlineCss(
+    rebaseCssUrls(userOverridesCss, `/api/themes/${slug}/`),
+  );
+
+  // When media is on R2, every image (including the LCP hero) is served by a
+  // 302 from `/media/[id]` to a cross-origin `*.r2.dev` bucket. Without a
+  // warmed connection the browser only discovers that origin AFTER following
+  // the redirect, then pays a full DNS+TCP+TLS handshake (~4 RTTs under a
+  // throttled mobile link) before the first image byte — directly delaying LCP.
+  // Preconnect to the R2 origin so the connection is ready when the redirect
+  // resolves. `crossOrigin` (anonymous) is required so the warmed socket is
+  // reused for the image fetch. No-op when R2 isn't configured (db-BLOB media
+  // is same-origin and needs no preconnect).
+  let r2Origin: string | null = null;
+  try {
+    const r2Public = process.env.NEXT_PUBLIC_R2_PUBLIC_URL?.trim();
+    if (r2Public) r2Origin = new URL(r2Public).origin;
+  } catch {
+    r2Origin = null;
+  }
+
   const head = (
     <>
-      <link rel="stylesheet" href={`/api/themes/${slug}/styles/theme.css`} />
-      <link rel="stylesheet" href={`/api/themes/${slug}/tokens.css`} />
-      <link rel="stylesheet" href={`/api/themes/${slug}/user-overrides.css`} />
+      {r2Origin ? (
+        <link rel="preconnect" href={r2Origin} crossOrigin="anonymous" />
+      ) : null}
+      {/* `precedence` makes React 19 hoist these into <head> and keep them in
+          this order (theme base → brand tokens → user overrides), so the
+          inlined tokens/overrides can't land in <body> or lose the cascade. */}
+      <link
+        rel="stylesheet"
+        href={`/api/themes/${slug}/styles/theme.css`}
+        precedence="np-theme-1-base"
+      />
+      {themeTokensCss ? (
+        <style
+          href="np-theme-tokens"
+          precedence="np-theme-2-tokens"
+          dangerouslySetInnerHTML={{ __html: themeTokensCss }}
+        />
+      ) : null}
+      {safeOverridesCss ? (
+        <style
+          href="np-theme-overrides"
+          precedence="np-theme-3-overrides"
+          dangerouslySetInnerHTML={{ __html: safeOverridesCss }}
+        />
+      ) : null}
       {faviconUrl ? (
         <link rel="icon" type={faviconType} href={faviconUrl} />
       ) : null}

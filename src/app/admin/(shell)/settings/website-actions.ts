@@ -42,6 +42,10 @@ export async function saveWebsiteSettings(input: WebsiteSettings): Promise<SaveR
   if (!session?.user?.id) {
     return { ok: false, error: "Not authenticated" };
   }
+  // Site identity (title, URL) is admin-only, like the other settings tabs.
+  if (!session.user.roles?.includes("admin")) {
+    return { ok: false, error: "Only administrators can change site settings" };
+  }
   const guard = await assertWriteable(db());
   if (!guard.ok) return { ok: false, error: guard.error! };
   if (!input.title.trim()) {

@@ -28,7 +28,21 @@ export function readEnv(): EnvConfig {
   const rawProvider = process.env.NEXTPRESS_DB_PROVIDER?.trim().toLowerCase();
   const provider: DbProvider = rawProvider === "supabase" ? "supabase" : "turso";
 
-  const databaseUrl = process.env.TURSO_DATABASE_URL?.trim() || "file:./.local/dev.db";
+  const configuredUrl = process.env.TURSO_DATABASE_URL?.trim();
+  // A production server without a database URL must not boot on an empty
+  // local file (that would offer the first-run wizard to anyone). `next
+  // build` also runs with NODE_ENV=production and may lack runtime env, so
+  // the fallback stays available during the build phase only
+  // (security audit 2026-11-12).
+  if (
+    !configuredUrl &&
+    provider === "turso" &&
+    process.env.NODE_ENV === "production" &&
+    process.env.NEXT_PHASE !== "phase-production-build"
+  ) {
+    throw new Error("NextPress: TURSO_DATABASE_URL is required in production.");
+  }
+  const databaseUrl = configuredUrl || "file:./.local/dev.db";
   const authToken = process.env.TURSO_AUTH_TOKEN?.trim() || undefined;
 
   let databaseUrlAdmin: string | undefined;

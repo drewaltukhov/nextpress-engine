@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { auth } from "@core/auth";
+import { validateStepUp } from "@core-plugins/security/step-up";
 import { db } from "@core/db/instance";
 import { sendEmail } from "@core/email";
 import { assertWriteable } from "@core/maintenance";
@@ -73,12 +74,20 @@ export async function getMyProfile(): Promise<MyProfile | null> {
 
 export type RequestResult = { ok: true } | { ok: false; error: string };
 
-export async function requestEmailChange(newEmail: string): Promise<RequestResult> {
+export async function requestEmailChange(
+  newEmail: string,
+  currentPassword: string,
+): Promise<RequestResult> {
   const session = await auth();
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
   const guard = await assertWriteable(db());
   if (!guard.ok) return { ok: false, error: guard.error! };
   const actorId = await resolveUserId(db(), session.user);
+  // The email is the password-recovery channel: a session alone must not be
+  // able to move it (security audit 2026-11-12).
+  if (!currentPassword || !(await validateStepUp(db(), actorId, currentPassword))) {
+    return { ok: false, error: "Your current password is incorrect" };
+  }
 
   const cleanNew = newEmail.trim().toLowerCase();
   if (!cleanNew || cleanNew.indexOf("@") < 1) {
@@ -246,9 +255,11 @@ export async function confirmEmailChange(token: string): Promise<ConfirmResult> 
   const nowIso = now.toISOString();
 
   const row = await db().execute({
-    sql: `SELECT user_id, old_email, new_email, expires_at, consumed_at
-          FROM user_email_changes
-          WHERE token_hash = ?`,
+    sql: `SELECT c.user_id, c.old_email, c.new_email, c.expires_at, c.consumed_at, c.created_at,
+                 sr.revoked_at
+          FROM user_email_changes c
+          LEFT JOIN session_revocations sr ON sr.user_id = c.user_id
+          WHERE c.token_hash = ?`,
     args: [tokenHash]
   });
   const r = row.rows[0];
@@ -257,6 +268,12 @@ export async function confirmEmailChange(token: string): Promise<ConfirmResult> 
 
   const expiresAt = new Date(String(r.expires_at));
   if (expiresAt.getTime() < now.getTime()) return { ok: false, code: "expired" };
+  // A change requested before the account's sessions were last revoked
+  // (password reset, admin revoke, delete) dies with them, so recovering the
+  // account also evicts an intruder's pending change.
+  if (r.revoked_at != null && new Date(String(r.revoked_at)).getTime() >= new Date(String(r.created_at)).getTime()) {
+    return { ok: false, code: "expired" };
+  }
 
   const userId = String(r.user_id);
   const oldEmail = String(r.old_email);

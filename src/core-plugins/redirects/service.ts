@@ -6,7 +6,8 @@
  *
  * Cycle detection prevents chains longer than MAX_CHAIN_DEPTH hops.
  */
-import { unstable_cache, updateTag } from "next/cache";
+import { unstable_cache } from "next/cache";
+import { invalidateCacheTag } from "@core/cache/invalidate";
 import type { DbClient } from "@core/db/client";
 import { cacheOrFallback } from "@core/caching/with-fallback";
 import { getSetting } from "@core-plugins/settings/registry";
@@ -80,11 +81,7 @@ function setRedirectCacheInflight(p: Promise<void> | null): void {
 
 export function invalidateRedirectsCache(): void {
   setRedirectCache(null);
-  try {
-    updateTag(REDIRECTS_CACHE_TAG);
-  } catch {
-    // non-Server-Action context — in-process clear is enough
-  }
+  invalidateCacheTag(REDIRECTS_CACHE_TAG);
 }
 
 async function loadActiveRedirectsRaw(db: DbClient): Promise<CachedRedirect[]> {
@@ -201,7 +198,7 @@ export async function createRedirect(
 
 /**
  * Convenience for auto-created redirects (slug/permalink changes).
- * Always 301, no expiration.
+ * Status from `redirects.default_status` (301 by default), no expiration.
  */
 export async function createAutoRedirect(
   db: DbClient,
@@ -235,11 +232,23 @@ export async function createAutoRedirect(
     // active redirect FROM the new URL first; this also unblocks
     // createRedirect's cycle detection from firing on the legitimate
     // reverse rename.
+    // Only auto redirects are cleared or replaced here: a manual redirect is
+    // an admin's decision and a content rename must never delete or
+    // overwrite it (security audit 2026-11-12).
     await db.execute({
-      sql: `DELETE FROM redirects WHERE tenant_id = 1 AND from_path = ? AND active = 1`,
+      sql: `DELETE FROM redirects
+            WHERE tenant_id = 1 AND from_path = ? AND active = 1 AND source != 'manual'`,
       args: [opts.toPath],
     });
     invalidateRedirectsCache();
+    const manual = await db.execute({
+      sql: `SELECT 1 FROM redirects WHERE tenant_id = 1 AND from_path = ? AND source = 'manual' LIMIT 1`,
+      args: [opts.fromPath],
+    });
+    if (manual.rows.length > 0) {
+      console.warn(`[redirects] auto-redirect ${opts.fromPath} -> ${opts.toPath} skipped: a manual redirect owns ${opts.fromPath}`);
+      return;
+    }
 
     await createRedirect(db, {
       fromPath: opts.fromPath,
@@ -248,9 +257,36 @@ export async function createAutoRedirect(
       source: opts.source,
       createdBy: opts.createdBy
     });
+  } catch (err) {
+    // Auto-redirect creation failures must not break the save path, but they
+    // are logged (cycle detection, uniqueness) instead of vanishing (#5).
+    console.warn(`[redirects] auto-redirect ${opts.fromPath} -> ${opts.toPath} not created:`, err instanceof Error ? err.message : err);
+  }
+}
+
+/**
+ * The target of an active MANUAL redirect from `path`, or null. A page or
+ * post renamed onto such a path is hidden behind the redirect (manual
+ * redirects always win), so the editor is warned (#5).
+ */
+export async function findActiveManualRedirect(db: DbClient, path: string): Promise<string | null> {
+  const r = await db.execute({
+    sql: `SELECT to_path FROM redirects
+          WHERE tenant_id = 1 AND from_path = ? AND source = 'manual' AND active = 1 LIMIT 1`,
+    args: [path],
+  });
+  return r.rows[0] ? String(r.rows[0].to_path) : null;
+}
+
+/** Editor-facing warning for a URL hidden by a manual redirect, or null. */
+export async function manualRedirectWarning(db: DbClient, path: string): Promise<string | null> {
+  try {
+    const target = await findActiveManualRedirect(db, path);
+    return target
+      ? `Saved, but a manual redirect sends ${path} to ${target}, so visitors can't reach it there. Remove that redirect under Redirects to show it.`
+      : null;
   } catch {
-    // Auto-redirect creation failures must not break the save path.
-    // Cycle detection or uniqueness violations are swallowed.
+    return null;
   }
 }
 

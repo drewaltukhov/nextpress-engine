@@ -26,6 +26,8 @@ export interface RoleRow {
 }
 
 export async function getRolesWithUsage(): Promise<RoleRow[]> {
+  const session = await auth();
+  if (!session?.user?.roles?.includes("admin")) return [];
   const result = await db().execute({
     sql: `SELECT r.slug, r.label, r.permissions,
                  (SELECT COUNT(*) FROM user_roles ur WHERE ur.role_slug = r.slug AND ur.tenant_id = 1) AS user_count
@@ -72,6 +74,9 @@ export async function createRole(
 ): Promise<{ ok: true; slug: string } | { ok: false; error: string }> {
   const session = await auth();
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
+  if (!session.user.roles?.includes("admin")) {
+    return { ok: false, error: "Only administrators can create roles" };
+  }
   const guard = await assertWriteable(db());
   if (!guard.ok) return { ok: false, error: guard.error! };
   const actorId = await resolveUserId(db(), session.user);
@@ -178,6 +183,9 @@ export async function setRolePermission(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const session = await auth();
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
+  if (!session.user.roles?.includes("admin")) {
+    return { ok: false, error: "Only administrators can change role permissions" };
+  }
   const guard = await assertWriteable(db());
   if (!guard.ok) return { ok: false, error: guard.error! };
   const actorId = await resolveUserId(db(), session.user);

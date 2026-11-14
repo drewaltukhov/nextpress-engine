@@ -44,7 +44,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  for (const tag of TAGS) revalidateTag(tag, "max");
+  // Immediate, not "max": "max" is stale-while-revalidate, so the first read
+  // after a purge still served the old row (2026-11-02).
+  for (const tag of TAGS) revalidateTag(tag, { expire: 0 });
   revalidatePath("/", "layout");
   return NextResponse.json({
     ok: true,

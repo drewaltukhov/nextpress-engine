@@ -1,10 +1,11 @@
 import NextAuth from "next-auth";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest, type NextFetchEvent } from "next/server";
 import { authConfigEdge } from "@core/auth/config-edge";
 import { isAdminOnlyRoute } from "@core/auth/admin-routes";
 import { matchRedirect, bumpHitCount } from "@core-plugins/redirects";
 import { db } from "@core/db/instance";
-import { isSetupComplete } from "@core/setup/status";
+import { isSetupAllowed, isSetupComplete } from "@core/setup/status";
+import { staleSessionRedirect } from "@core/auth/stale-session-gate";
 import { checkPublicAccessForRequest } from "@core/access/public-access";
 import { getMaintenanceState, ipBypasses } from "@core/maintenance";
 import { getClientIp } from "@core/net/client-ip";
@@ -114,7 +115,92 @@ async function tryRedirect(req: { url: string }, pathname: string): Promise<Next
   }
 }
 
-export default auth(async (req) => {
+/**
+ * Content pages that get a forced shared CDN TTL. Routes that set their own
+ * Cache-Control keep it: /media/* (immutable, 1 year), /docs (static), and
+ * file-like routes (robots.txt, sitemap.xml, rss.xml, llms.txt, …) whose
+ * s-maxage is sized per route. /search always varies per request.
+ */
+function isCdnCacheablePage(pathname: string): boolean {
+  if (pathname.startsWith("/media/")) return false;
+  if (pathname === "/docs" || pathname.startsWith("/docs/")) return false;
+  if (pathname === "/search" || pathname.startsWith("/search/")) return false;
+  const last = pathname.slice(pathname.lastIndexOf("/") + 1);
+  return !last.includes(".");
+}
+
+/**
+ * Public-content pipeline — setup gate, IP/country block, maintenance gate,
+ * and slug-rename redirects. Runs for public paths *without* the Auth.js
+ * wrapper (see the default export), so the response carries no csrf/callback
+ * `Set-Cookie` and can be cached at the CDN (Vercel never caches a response
+ * that sets a cookie). Uses only the request headers/URL — never the
+ * session — so it's safe outside `auth()`. On Vercel the proxy runs before
+ * the CDN cache, so these gates still apply to cached pages.
+ */
+async function handlePublicContent(req: NextRequest): Promise<NextResponse> {
+  const { pathname } = req.nextUrl;
+
+  // Setup gate. Read straight from the DB (autoload + bulk cache makes
+  // this an in-memory Map hit on every request after the first one in
+  // the process). No cookie — anonymous, search-engine, and bot traffic
+  // all evaluate the same as a logged-in browser.
+  // With setup disallowed (production default) the wizard never opens, so
+  // treat the site as set up — a DB hiccup must not redirect to it either.
+  const setupDone = !isSetupAllowed() || (await isSetupComplete(db()).catch(() => false));
+  if (!setupDone) {
+    return NextResponse.redirect(new URL("/admin/setup", req.url));
+  }
+
+  // IP/country block. `checkPublicAccessForRequest` is the same gate
+  // public pages used to run inline via `assertPublicAccess` — only
+  // now it runs in the proxy so the page itself doesn't pull `headers()`.
+  const access = await checkPublicAccessForRequest(req.headers);
+  if (!access.allowed) {
+    return new NextResponse(null, { status: 403 });
+  }
+
+  // Maintenance gate. When enabled and the visitor isn't on the bypass
+  // list, serve a self-contained 503 with the configured message.
+  // Returning the body directly (instead of rewriting to a page) sidesteps
+  // Next.js's `_`-prefixed folder exclusion and keeps the response within
+  // the proxy — no extra route to maintain.
+  try {
+    const state = await getMaintenanceState(db());
+    if (state.enabled) {
+      const ip = getClientIp(req.headers);
+      if (!ipBypasses(ip, state.bypassCidrs)) {
+        return new NextResponse(buildMaintenanceHtml(state.message), {
+          status: 503,
+          headers: {
+            "Content-Type": "text/html; charset=utf-8",
+            "Retry-After": "120",
+            "Cache-Control": "no-store",
+          },
+        });
+      }
+    }
+  } catch {
+    // DB hiccup — don't 503 the entire site.
+  }
+
+  const redirectResponse = await tryRedirect(req, pathname);
+  if (redirectResponse) return redirectResponse;
+
+  // The content routes render dynamically, so their own Cache-Control is
+  // `no-store`. But the response is anonymous and identical for every
+  // visitor, so it's safe to cache at the CDN: force a short shared TTL +
+  // stale-while-revalidate. That TTL is also how long an admin edit can
+  // take to show publicly (revalidatePath can't purge the CDN). Skip query
+  // strings (pagination, previews) — those vary per request.
+  const res = NextResponse.next();
+  if (!req.nextUrl.search && isCdnCacheablePage(pathname)) {
+    res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+  }
+  return res;
+}
+
+const authGatedProxy = auth(async (req) => {
   const { pathname } = req.nextUrl;
 
   if (STATIC_ASSET.test(pathname)) {
@@ -146,54 +232,12 @@ export default auth(async (req) => {
   }
 
   // ── Public-path branch ─────────────────────────────────────────────
-  // /admin and /api are internal surfaces and have their own setup gate
-  // below; the public branch only needs the setup check + access/redirect
-  // pipeline.
+  // Public content (not /admin, not /api) is normally handled by the default
+  // export *before* the Auth.js wrapper runs, so it stays CDN-cacheable. This
+  // is the fallback for any public path that still reaches the auth-gated
+  // handler — same pipeline, just without the caching benefit.
   if (!pathname.startsWith("/admin") && !pathname.startsWith("/api")) {
-    // Setup gate. Read straight from the DB (autoload + bulk cache makes
-    // this an in-memory Map hit on every request after the first one in
-    // the process). No cookie — anonymous, search-engine, and bot traffic
-    // all evaluate the same as a logged-in browser.
-    const setupDone = await isSetupComplete(db()).catch(() => false);
-    if (!setupDone) {
-      return NextResponse.redirect(new URL("/admin/setup", req.url));
-    }
-
-    // IP/country block. `checkPublicAccessForRequest` is the same gate
-    // public pages used to run inline via `assertPublicAccess` — only
-    // now it runs in the proxy so the page itself doesn't pull `headers()`.
-    const access = await checkPublicAccessForRequest(req.headers);
-    if (!access.allowed) {
-      return new NextResponse(null, { status: 403 });
-    }
-
-    // Maintenance gate. When enabled and the visitor isn't on the bypass
-    // list, serve a self-contained 503 with the configured message.
-    // Returning the body directly (instead of rewriting to a page) sidesteps
-    // Next.js's `_`-prefixed folder exclusion and keeps the response within
-    // the proxy — no extra route to maintain.
-    try {
-      const state = await getMaintenanceState(db());
-      if (state.enabled) {
-        const ip = getClientIp(req.headers);
-        if (!ipBypasses(ip, state.bypassCidrs)) {
-          return new NextResponse(buildMaintenanceHtml(state.message), {
-            status: 503,
-            headers: {
-              "Content-Type": "text/html; charset=utf-8",
-              "Retry-After": "120",
-              "Cache-Control": "no-store",
-            },
-          });
-        }
-      }
-    } catch {
-      // DB hiccup — don't 503 the entire site.
-    }
-
-    const redirectResponse = await tryRedirect(req, pathname);
-    if (redirectResponse) return redirectResponse;
-    return NextResponse.next();
+    return handlePublicContent(req);
   }
 
   // Self-heal stale session cookies. When a session cookie is present but
@@ -210,7 +254,7 @@ export default auth(async (req) => {
     return clearAuthCookies(NextResponse.redirect(new URL(target, req.url)));
   }
 
-  const setupDone = await isSetupComplete(db()).catch(() => false);
+  const setupDone = !isSetupAllowed() || (await isSetupComplete(db()).catch(() => false));
 
   // ── Public token-gated pages (bypass both setup and auth gates) ─────
   // These must be checked before the setup redirect — a user who received
@@ -242,6 +286,18 @@ export default auth(async (req) => {
   if (!setupDone) {
     // Setup not done — force every /admin/* request to the wizard.
     return NextResponse.redirect(new URL("/admin/setup", req.url));
+  }
+
+  // ── Sessions the database has ended ────────────────────────────────
+  // `req.auth` here only proves the cookie is signed; the Node jwt callback
+  // rejects revoked/expired/disabled/pre-authTime sessions, and pages then
+  // redirect to /admin/login — which the gate below would bounce straight
+  // back to /admin. Send them through the force-logout route handler, which
+  // clears the cookies, so that loop can't start.
+  const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
+  if (isAdminPath && req.auth && pathname !== "/admin/force-logout") {
+    const target = await staleSessionRedirect(db(), req.auth);
+    if (target) return NextResponse.redirect(new URL(target, req.url));
   }
 
   // ── Normal auth gating ─────────────────────────────────────────────
@@ -277,6 +333,35 @@ export default auth(async (req) => {
 
   return NextResponse.next();
 });
+
+export default async function proxy(req: NextRequest, event: NextFetchEvent) {
+  const { pathname } = req.nextUrl;
+
+  if (STATIC_ASSET.test(pathname)) {
+    return NextResponse.next();
+  }
+
+  // Everything except /admin, /api and a custom (hide-admin) admin slug is
+  // public content: run it outside the Auth.js wrapper so it carries no
+  // Set-Cookie (see handlePublicContent).
+  const adminSlug = await getAdminPath(db()).catch(() => "/admin");
+  const isAdminPath = pathname === "/admin" || pathname.startsWith("/admin/");
+  const isApiPath = pathname === "/api" || pathname.startsWith("/api/");
+  const isAdminSlug =
+    adminSlug !== "/admin" && (pathname === adminSlug || pathname.startsWith(`${adminSlug}/`));
+  if (!isAdminPath && !isApiPath && !isAdminSlug) {
+    return handlePublicContent(req);
+  }
+
+  // `auth()` returns an overloaded type; as a middleware it's invoked with
+  // (NextRequest, NextFetchEvent). Narrow to that call signature so we can
+  // delegate the auth-gated pipeline explicitly.
+  const runAuthGated = authGatedProxy as unknown as (
+    req: NextRequest,
+    event: NextFetchEvent,
+  ) => Promise<NextResponse | Response | undefined>;
+  return runAuthGated(req, event);
+}
 
 export const config = {
   // Broader than admin/* now that redirects need to fire on public paths

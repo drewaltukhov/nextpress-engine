@@ -19,7 +19,8 @@ async function ensureSchema(db: DbClient) {
       tenant_id INTEGER NOT NULL DEFAULT 1,
       email TEXT NOT NULL,
       display_name TEXT NOT NULL DEFAULT '',
-      status TEXT NOT NULL DEFAULT 'active'
+      status TEXT NOT NULL DEFAULT 'active',
+      deleted_at TEXT
     )
   `);
   await db.execute(`
@@ -48,6 +49,8 @@ async function ensureSchema(db: DbClient) {
     sql: "INSERT INTO users (id, email, display_name) VALUES (?, ?, ?)",
     args: ["u1", "alice@example.com", "Alice"]
   });
+  await db.execute("CREATE TABLE IF NOT EXISTS user_roles (user_id TEXT NOT NULL, role_slug TEXT NOT NULL, tenant_id INTEGER NOT NULL DEFAULT 1, PRIMARY KEY (user_id, role_slug, tenant_id))");
+  await db.execute("INSERT OR IGNORE INTO user_roles (user_id, role_slug) SELECT id, 'admin' FROM users"); // only admins mint API tokens (lookupActiveToken)
 }
 
 // ---------------------------------------------------------------------------

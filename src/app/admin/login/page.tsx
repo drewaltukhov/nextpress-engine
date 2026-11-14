@@ -20,6 +20,7 @@ const REASON_MESSAGE: Record<string, string> = {
   revoked: "Your session was ended by an admin or password change. Sign in again.",
   user_missing: "Your account is no longer available. Sign in again to continue.",
   missing_iat: "Your session is invalid. Sign in again to continue.",
+  disabled: "This account is disabled. Ask an administrator to re-enable it.",
 };
 
 export default async function LoginPage({ searchParams }: PageProps) {

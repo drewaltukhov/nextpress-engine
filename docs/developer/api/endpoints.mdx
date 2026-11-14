@@ -82,7 +82,7 @@ curl https://your-site.com/api/health
 
 ### `POST /api/cache/purge`
 
-Bearer-authenticated endpoint that invalidates every `nextpress:*` cache tag and revalidates the root layout. Intended caller is `scripts/mirror-to-turso.ts` after a DB mirror so the deployed site refreshes cached reads from the new data.
+Bearer-authenticated endpoint that invalidates every `nextpress:*` cache tag and revalidates the root layout. Call it after changing the database outside the app (for example a manual data fix) so the deployed site refreshes cached reads from the new data. Public pages are also cached at the CDN for up to 60 seconds (`s-maxage=60`, then served stale for up to 5 more minutes while refreshing), which this endpoint does not purge — allow that long for the change to show publicly.
 
 **Auth:** `Authorization: Bearer $CACHE_PURGE_TOKEN`. The token comes from the `CACHE_PURGE_TOKEN` env var on the deployed site. Until it's set, the endpoint returns `503` — safe to ship unwired.
 

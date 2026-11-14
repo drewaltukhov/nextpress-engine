@@ -5,7 +5,7 @@ import { auth } from "@core/auth";
 import { db } from "@core/db/instance";
 import { getPost } from "@core-plugins/posts";
 import { getRevisions, getRevision } from "@core/revisions/service";
-import { restorePostRevisionAction } from "../../../revisions/actions";
+import { restorePostRevisionAction, getRevisionsAction } from "../../../revisions/actions";
 import { ArrowLeft, Clock, MoveRight } from "lucide-react";
 import { restoreBlockAction } from "../../../revisions/actions";
 
@@ -15,6 +15,8 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
+  // Same access rule as the page body: no title for items you can't edit.
+  if (!(await getRevisionsAction("post", Number(id))).ok) return { title: "History" };
   const post = await getPost(db(), Number(id));
   return { title: post ? `History — ${post.title}` : "History" };
 }
@@ -347,8 +349,14 @@ export default async function PostHistoryPage({
   ]);
   if (!post) notFound();
 
+  // History is visible only to someone who may edit this post (same rule as
+  // the editor), and a ?rev= from another item is ignored.
+  if (!(await getRevisionsAction("post", postId)).ok) notFound();
+
   const selectedRevId = revParam ? Number(revParam) : (revisions[0]?.id ?? null);
-  const selectedRev = selectedRevId ? await getRevision(db(), selectedRevId) : null;
+  const fetchedRev = selectedRevId ? await getRevision(db(), selectedRevId) : null;
+  const selectedRev =
+    fetchedRev && fetchedRev.kind === "post" && fetchedRev.contentId === postId ? fetchedRev : null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const snap = selectedRev ? (JSON.parse(selectedRev.snapshot) as Record<string, any>) : null;
 

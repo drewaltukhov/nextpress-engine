@@ -22,7 +22,7 @@ Security in NextPress isn't an add-on. It's built into the core engine at every 
 - **IP auto-blocking** — 20 failures from one IP in 30 minutes blocks it for 60 minutes
 - **CIDR allow list** — whitelist office IPs, VPNs, partner networks
 - **CIDR block list** — manual blocks with timed or permanent expiry
-- **Country filter** — geoip-lite-backed allowlist or denylist of ISO-3166 codes, enforced on the auth path
+- **Country filter** — allowlist or denylist of ISO-3166 codes, using the visitor country the hosting edge reports (`x-vercel-ip-country` on Vercel, Cloudflare's `cf-ipcountry` when self-hosted). Enforced on public pages only; login and API requests carry no country and are let through. When self-hosting, like IP-based controls, it can be bypassed by a client that reaches the server directly instead of through Cloudflare
 - **Step-up auth** — destructive actions require password re-entry (5-minute window, configurable)
 - **Audit logging** — every sensitive action logged with actor, target, IP, and diff
 - **Secret redaction** — PII patterns automatically masked before they hit the log tables

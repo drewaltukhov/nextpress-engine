@@ -67,6 +67,8 @@ export {
   matchRedirect,
   createRedirect,
   createAutoRedirect,
+  findActiveManualRedirect,
+  manualRedirectWarning,
   bumpHitCount,
   setRedirectActive,
   deactivateRedirect,

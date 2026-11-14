@@ -1,93 +1,55 @@
 "use server";
 
 import { db } from "@core/db/instance";
-import { issueEmailToken } from "@core-plugins/users/tokens";
-import { auditLog } from "@core-plugins/logging";
-import { sendEmail } from "@core/email";
+import { processSelfPasswordReset } from "@core-plugins/users/self-reset";
+import { getClientIp } from "@core/net/client-ip";
+import { resolveSiteUrl } from "@core/site-url";
 import { headers } from "next/headers";
-import { isUnverifiableEmail } from "../(shell)/users/email-utils";
+import { after } from "next/server";
 
 async function getAppOrigin(): Promise<string> {
   const envUrl = process.env.AUTH_URL?.trim();
   if (envUrl) return envUrl.replace(/\/$/, "");
+  // Never build the emailed reset link from the request `Host` header in
+  // production: an attacker can forge it and poison the link sent to the
+  // victim (reset-link poisoning / token theft). Fall back to the trusted
+  // site URL (`site.url` setting, then Vercel's production URL env), and
+  // fail closed when there is none.
+  if (process.env.NODE_ENV === "production") {
+    const siteUrl = await resolveSiteUrl(db());
+    if (siteUrl) return siteUrl;
+    throw new Error("AUTH_URL or site.url must be set in production to build reset links");
+  }
   const h = await headers();
   const host = h.get("host") ?? "localhost:3000";
   const proto = h.get("x-forwarded-proto") ?? "http";
   return `${proto}://${host}`;
 }
 
-// Self-service password reset request. Always returns { ok: true } regardless
-// of whether the email exists, is unverifiable, or is rate-limited — that way
-// this endpoint can't be used to enumerate registered users.
+// Self-service password reset request. Always returns { ok: true }, and returns
+// it before any account lookup: the lookup, rate limits, token and email all
+// run detached in processSelfPasswordReset, so a registered address can't be
+// told apart from an unknown one by the answer or its timing (security audit
+// 2026-11-12). Request headers are read here, while the request is in scope.
+// The detached work is registered with `after()` so a serverless host (Vercel)
+// keeps the function alive until the email is sent, instead of freezing it
+// once the response is out.
 export async function requestSelfPasswordReset(email: string): Promise<{ ok: true }> {
   const cleaned = email.trim().toLowerCase();
   if (!cleaned || cleaned.indexOf("@") < 1) return { ok: true };
 
-  const userRow = await db().execute({
-    sql: "SELECT id, display_name FROM users WHERE tenant_id = 1 AND email = ? AND deleted_at IS NULL LIMIT 1",
-    args: [cleaned]
-  });
-  if (userRow.rows.length === 0) return { ok: true };
-
-  // Can't deliver to a placeholder address — silently no-op rather than reveal
-  // that fact to an enumerator.
-  if (isUnverifiableEmail(cleaned)) return { ok: true };
-
-  const userId = String(userRow.rows[0].id);
-  const targetName = String(userRow.rows[0].display_name);
-
-  // Rate limit — silently swallow if a non-consumed reset token was issued in
-  // the last 60 seconds for this user.
-  const recent = await db().execute({
-    sql: `SELECT 1 FROM user_email_tokens
-          WHERE user_id = ? AND purpose = 'reset_password' AND consumed_at IS NULL
-          AND created_at > datetime('now', '-60 seconds')
-          LIMIT 1`,
-    args: [userId]
-  });
-  if (recent.rows.length > 0) return { ok: true };
-
-  const issued = await issueEmailToken({ db: db(), userId, purpose: "reset_password" });
-  const origin = await getAppOrigin();
-  const resetUrl = `${origin}/admin/reset-password/${encodeURIComponent(issued.token)}`;
-
-  if (process.env.NODE_ENV !== "production") {
-    console.warn(`[dev] self-service reset URL for ${cleaned}: ${resetUrl}`);
-  }
-
+  const ip = getClientIp(await headers());
+  let origin: string;
   try {
-    await sendEmail({
-      input: {
-        to: cleaned,
-        subject: "Reset your password",
-        text: [
-          `Hi ${targetName},`,
-          ``,
-          `We received a request to reset your NextPress password.`,
-          `Open the link below within 24 hours to choose a new one:`,
-          ``,
-          resetUrl,
-          ``,
-          `If you didn't request this, you can ignore this email — your existing password keeps working.`
-        ].join("\n")
-      }
-    });
+    origin = await getAppOrigin();
   } catch {
-    // Swallow transport failures here too — don't reveal SMTP state to the
-    // unauthenticated caller. The dev console.warn above still surfaces the
-    // URL for local testing.
+    return { ok: true };
   }
 
-  try {
-    await auditLog(db(), {
-      actorUserId: userId,
-      action: "users.password_reset_requested_self",
-      targetType: "user",
-      targetId: userId
-    });
-  } catch {
-    // Audit failures must not break the action
-  }
-
+  after(() =>
+    processSelfPasswordReset(db(), { email: cleaned, ip, origin }).catch((err) => {
+      console.error("[auth] self-service password reset failed:", err);
+    }),
+  );
   return { ok: true };
 }

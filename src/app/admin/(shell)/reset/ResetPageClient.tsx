@@ -34,6 +34,7 @@ export function ResetPageClient() {
       // setup cookie + every Auth.js session variant, then 302s to
       // /admin/setup. Without this hop the proxy sees the still-present
       // stale JWT and ping-pongs to /admin/login forever.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- must leave the app so the route can clear auth cookies
       window.location.href = "/api/admin/reset/finish";
     });
   }

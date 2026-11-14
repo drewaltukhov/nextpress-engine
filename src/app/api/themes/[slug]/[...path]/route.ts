@@ -41,6 +41,22 @@ function mimeFor(path: string): string {
   return MIME[ext] ?? "application/octet-stream";
 }
 
+/**
+ * Conservative CSS minify — strips block comments and indentation/blank
+ * lines only. Deliberately does NOT collapse whitespace around tokens or
+ * inside a line, so string/`url()`/`calc()` contents are never altered.
+ * Enough to shave the theme stylesheet's comment-heavy source (a
+ * render-blocking request on mobile) with zero risk of breaking rules.
+ */
+function minifyCss(css: string): string {
+  return css
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^[ \t]+/gm, "")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+}
+
 interface Params {
   params: Promise<{ slug: string; path: string[] }>;
 }
@@ -75,10 +91,17 @@ export async function GET(_req: Request, { params }: Params): Promise<Response> 
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return new NextResponse(new Uint8Array(buf), {
+  const mime = mimeFor(requested);
+  // Minify CSS at serve time — the theme stylesheet is a render-blocking
+  // request, and its authored source carries large comment blocks.
+  const payload = mime.startsWith("text/css")
+    ? new TextEncoder().encode(minifyCss(buf.toString("utf8")))
+    : new Uint8Array(buf);
+
+  return new NextResponse(payload, {
     status: 200,
     headers: {
-      "Content-Type": mimeFor(requested),
+      "Content-Type": mime,
       "Cache-Control": "public, max-age=300, s-maxage=86400, stale-while-revalidate=86400",
     },
   });

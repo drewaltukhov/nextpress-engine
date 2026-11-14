@@ -55,11 +55,18 @@ async function commonGuard(): Promise<
   return guard;
 }
 
+// Reads need a signed-in session (the gallery picker is used in the post and
+// page editors by any staff role); unauthenticated callers get nothing
+// (security audit 2026-11-12).
 export async function getGalleries(): Promise<GalleryListItem[]> {
+  const session = await auth();
+  if (!session?.user?.id) return [];
   return listGalleries(db());
 }
 
 export async function getGalleryDetail(id: number): Promise<GalleryDetail | null> {
+  const session = await auth();
+  if (!session?.user?.id) return null;
   return getGallery(db(), id);
 }
 

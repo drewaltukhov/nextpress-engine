@@ -44,7 +44,9 @@ export default async function AdminShellLayout({ children }: { children: React.R
 
   // Soft session-expiry + revocation gate. NextAuth's maxAge is 1 year so
   // the cookie signature stays valid; the real lifetime lives in
-  // security.session_max_age_days and is enforced here.
+  // security.session_max_age_days. It is enforced by the jwt callback in
+  // @core/auth/config (a failing session makes auth() return null above)
+  // and the proxy's staleSessionRedirect; this check is a backstop.
   const freshness = await checkSessionFreshness(db(), {
     userId: session.user.id,
     iat: session.user.iat ?? null,

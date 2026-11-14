@@ -143,9 +143,9 @@ Click the magnifier to open a content picker — search across all published Pag
 Saving a panel does two things:
 
 1. Persists the layout id + config to the database.
-2. Calls `revalidatePath("/", "layout")` so every theme-served public route drops its cached pre-rendered panel JSX. The next request on the public site renders the new config.
+2. Calls `revalidatePath("/", "layout")` so every theme-served public route drops its cached pre-rendered panel JSX.
 
-Hard-refresh the public site (Cmd-Shift-R) if you don't see your change immediately — your browser may be holding an HTML response from the previous panel state.
+Public pages are also cached at the CDN for up to 60 seconds (`s-maxage=60`), and may be served stale for a few minutes more while the CDN refreshes, so allow a minute or two for the change to show publicly. Hard-refresh the public site (Cmd-Shift-R) if you still don't see it — your browser may be holding an HTML response from the previous panel state.
 
 ## Tips
 

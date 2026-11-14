@@ -12,7 +12,8 @@
  *     a no-op timestamp; the original publish date is preserved). Drop it
  *     if/when an audience expects re-publish to mean "new public time".
  */
-import { unstable_cache, updateTag } from "next/cache";
+import { unstable_cache } from "next/cache";
+import { invalidateCacheTag } from "@core/cache/invalidate";
 import type { DbClient } from "@core/db/client";
 import { cacheOrFallback } from "@core/caching/with-fallback";
 import { normalizeSlug } from "@core/slugs/normalize";
@@ -27,11 +28,7 @@ function getRuntimeDb(): DbClient {
 }
 
 export function invalidatePagesCache(): void {
-  try {
-    updateTag(PAGES_CACHE_TAG);
-  } catch {
-    // non-Server-Action context — caller relies on revalidate TTL
-  }
+  invalidateCacheTag(PAGES_CACHE_TAG);
 }
 import { PAGE_ROBOTS, PAGE_STATUSES, type PageRobots, type PageStatus } from "./schema/pages";
 
@@ -318,10 +315,35 @@ const getPublishedPageBySlugCached = unstable_cache(
   { tags: [PAGES_CACHE_TAG], revalidate: 300 },
 );
 
+/**
+ * Every published page slug, cached as ONE entry. The public catch-all checks
+ * a requested slug against this list before the per-slug cache, so random 404
+ * paths can't each mint a data-cache entry (security audit 2026-11-12,
+ * nextpress:cache:unstable-cache-attacker-keyed-entries).
+ */
+async function listPublishedPageSlugsRaw(db: DbClient): Promise<string[]> {
+  const r = await db.execute(
+    `SELECT slug FROM pages
+      WHERE tenant_id = 1 AND status = 'published' AND trashed_at IS NULL`
+  );
+  return r.rows.map((row) => String(row.slug));
+}
+
+const listPublishedPageSlugsCached = unstable_cache(
+  (): Promise<string[]> => listPublishedPageSlugsRaw(getRuntimeDb()),
+  ["nextpress", "published-page-slugs", "v1"],
+  { tags: [PAGES_CACHE_TAG], revalidate: 300 },
+);
+
 export async function getPublishedPageBySlug(
   db: DbClient,
   slug: string,
 ): Promise<PageDetail | null> {
+  const known = await cacheOrFallback(
+    () => listPublishedPageSlugsCached(),
+    () => listPublishedPageSlugsRaw(db),
+  );
+  if (!known.includes(slug)) return null;
   return cacheOrFallback(
     () => getPublishedPageBySlugCached(slug),
     () => getPublishedPageBySlugRaw(db, slug),

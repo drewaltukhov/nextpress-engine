@@ -31,12 +31,13 @@ const config: NextConfig = {
     ],
   },
   experimental: {
-    // Default server-action body limit is 1MB — too small for media uploads.
-    // Cap matches the upper bound of the media.max_file_size_mb setting (100).
-    // Per-file validation still happens in the upload action, so admins can
-    // set a tighter limit in /admin/media → Settings without changing this.
+    // This limit covers EVERY server action, including anonymous public ones,
+    // so it is sized for the largest legitimate action, not for media: backup
+    // restore (a zipped DB without media — typically a few MB). Media uploads go through /api/admin/media/upload, a route
+    // handler this limit does not govern, so media.max_file_size_mb still
+    // applies there (security audit 2026-11-12).
     serverActions: {
-      bodySizeLimit: "100mb",
+      bodySizeLimit: "25mb",
     },
     // Enables `forbidden()` from `next/navigation` + the `forbidden.tsx`
     // file convention. Used by `assertPublicAccess` to short-circuit
@@ -93,7 +94,24 @@ const config: NextConfig = {
       });
     }
 
-    return [{ source: "/(.*)", headers: baseHeaders }];
+    return [
+      { source: "/(.*)", headers: baseHeaders },
+      // Media is served from this origin (db storage backend). An uploaded
+      // SVG opened directly must not run script with the site's cookies, so
+      // every /media/* response gets a sandboxing CSP. This rule must come
+      // after the site-wide one: config headers replace a route's own CSP and
+      // the later match wins. <img> embedding ignores it (security audit
+      // 2026-11-12; route-level headers in core-plugins/media/safety-headers).
+      {
+        source: "/media/:path*",
+        headers: [
+          {
+            key: "Content-Security-Policy",
+            value: "sandbox; default-src 'none'; script-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; frame-ancestors 'none'",
+          },
+        ],
+      },
+    ];
   }
 };
 

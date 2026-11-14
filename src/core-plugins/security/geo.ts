@@ -1,7 +1,8 @@
 /**
- * Geo-IP lookup — always returns null. Vercel callers use x-vercel-ip-country
- * (passed as countryHint) instead; self-hosted deploys get null country, which
- * fails-open by design.
+ * Geo-IP lookup — always returns null. Callers pass the platform's edge
+ * country header as countryHint (getClientCountry in @core/net/client-ip:
+ * x-vercel-ip-country on Vercel, cf-ipcountry elsewhere); without it the
+ * country is null, which fails open by design.
  */
 export async function countryFor(_ip: string): Promise<string | null> {
   return null;

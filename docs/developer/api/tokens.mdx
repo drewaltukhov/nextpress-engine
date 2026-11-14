@@ -17,15 +17,14 @@ npp_<32-random-bytes-base64url>
 
 ## Creating a token
 
-Tokens are created through the admin UI at `/admin/api-tokens`. During creation you configure:
+Administrators create tokens in the admin UI at `/admin/api-tokens`. During creation you choose:
 
 | Setting | Description |
 |---------|-------------|
 | **Name** | Human-readable label (e.g. "CI deploy", "Cuppa integration") |
 | **Scopes** | Which operations the token can perform |
-| **Allowed origins** | Optional CIDR blocks to restrict which IPs can use the token |
-| **Rate limit** | Requests per minute (blank = site default of 60) |
-| **Expiration** | When the token stops working (never, 30d, 90d, 365d, or custom) |
+
+The expiry comes from the site setting `api.token_default_ttl_days` (0 = never). Per-token allowed origins (CIDR) and rate limits exist on the token record but are not set from the creation dialog.
 
 <Callout type="warn">
 The full token is shown **exactly once** at creation time. Copy it immediately — it cannot be retrieved later. Only a SHA-256 hash is stored in the database.
@@ -36,7 +35,7 @@ The full token is shown **exactly once** at creation time. Copy it immediately �
 | Scope | Description |
 |-------|-------------|
 | `posts:read` | Read all posts |
-| `posts:write` | Create and update posts |
+| `posts:write` | Create, update and publish posts |
 | `posts:delete` | Delete posts |
 | `media:read` | Read media metadata |
 | `media:upload` | Upload media files |
@@ -62,6 +61,8 @@ If `allowed_origins` is empty or null, the token works from any IP.
 Revoked tokens immediately stop working. Revocation is a soft-delete — the token row is preserved with a `revoked_at` timestamp and optional reason for the audit trail.
 
 Revoking a token requires **step-up authentication** (password re-entry) for security.
+
+Only administrators can create tokens, and a token works only while its owner is an active administrator: demoting, disabling or deleting the owner stops all of their tokens on the next request. Restoring the administrator role brings them back; revoke them if they should stay off.
 
 ## Token introspection
 

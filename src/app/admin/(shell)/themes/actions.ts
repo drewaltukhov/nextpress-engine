@@ -45,8 +45,9 @@ export async function getThemes(): Promise<ThemeListItem[]> {
 /**
  * Flip the active theme. Passing null clears the active flag, which falls
  * the public site back to the legacy hardcoded shell. Revalidates the
- * public surface so the new (or cleared) theme takes effect immediately
- * on the next request — caches don't strand visitors on the old chrome.
+ * server-side caches so the next uncached render uses the new (or cleared)
+ * theme. CDN copies of public pages are not purged by this — they expire
+ * within `s-maxage=60` (+ stale-while-revalidate=300; see src/proxy.ts).
  */
 export async function activateThemeAction(slug: string | null): Promise<SaveResult> {
   const guard = await commonGuard();

@@ -41,7 +41,7 @@ NextPress accepts these by default. Plugins or settings can extend the list.
 | Archives | `application/zip` |
 | Text | `text/csv`, `text/plain` |
 
-SVG uploads are sanitized server-side — embedded `<script>` and event handlers are stripped before storage.
+SVG uploads are stored exactly as uploaded — they are **not** sanitized, so an SVG can carry script. Media served from this site (`/media/…`) is sent with a sandboxing Content-Security-Policy, and SVGs are sent as a download (`Content-Disposition: attachment`), so opening one directly can't run script on the site. Showing it with `<img>` (the only way content uses media) is unaffected. Media on Cloudflare R2 is served from a separate host.
 
 ## Browsing the library
 
@@ -144,7 +144,7 @@ Every raster upload runs through the same pipeline before it lands in storage:
 2. **Longest-edge resize to 1920px**. Originals bigger than that are scaled down preserving aspect ratio; smaller files pass through untouched. EXIF orientation is honoured. 1920px sits at the floor for crisp retina display at typical blog content widths and caps storage growth.
 3. **600px thumbnail generation**. A WebP thumb (max-width 600px, quality 75) is generated alongside the resized original and stored on the row. SVG is skipped — vector content has nothing to resample.
 
-SVG uploads are also sanitized server-side: embedded `<script>` and event handlers are stripped before storage.
+SVG uploads are not sanitized (see above): they are stored as uploaded and served sandboxed, as a download when opened directly.
 
 ### Where each variant gets served
 
@@ -202,5 +202,5 @@ DB→R2 migration uploads bytes to R2, then `UPDATE`s the row to point at the R2
 
 - **Always fill alt text.** Used as a fallback in OG card descriptions and image search. The library shows a small badge on items missing alt text so you can find them.
 - **Don't pre-compress JPEGs.** NextPress's auto-convert-to-WebP + 1920px resize already handle the heavy lifting. Manually compressing before upload double-encodes and tends to look worse than the engine's single pass.
-- **SVGs are sanitized but still inspect them.** Sanitization strips scripts but doesn't validate visual correctness. Test SVG icons in the preview before publishing.
+- **Only upload SVGs from sources you trust.** They are stored as uploaded (not sanitized); the site serves them sandboxed, but check them in the preview before publishing.
 - **R2 is friction-free to add later.** Existing DB rows keep working forever; nothing in your post bodies, themes, or feeds points at backend-specific URLs.

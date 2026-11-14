@@ -21,7 +21,7 @@ Inactive themes still exist in the system — you can preview them, customize th
 2. The theme grid shows every theme installed. The active one has an "Active" badge.
 3. On a different theme's card, click **Activate**.
 4. A confirmation dialog appears. Read it (see "What happens on activation" below) and confirm.
-5. The active badge moves to the new theme. Public routes start rendering with it immediately.
+5. The active badge moves to the new theme. Public routes start rendering with it on their next uncached request. Public pages are cached at the CDN for up to 60 seconds (and may be served stale a few minutes more while it refreshes), so allow a minute or two for the change to show publicly.
 
 ## What happens on activation
 
@@ -29,9 +29,9 @@ Three things, in order:
 
 1. **First-time clone.** If the target theme has never been activated before, NextPress copies its default templates and chrome (header, sidebars, footer) from the theme's source files into your `theme_data` table. After this point, the templates are *yours* — edit them freely in the theme builder, and your edits won't be lost when the theme's source files update.
 2. **Active flag flips.** The site-wide `active_theme` setting is updated. Subsequent public requests render through the new theme.
-3. **Cache flush.** The page cache and any theme-derived caches (rendered CSS, favicon data) are invalidated. The next request rebuilds them.
+3. **Cache flush.** The page cache and any theme-derived caches (rendered CSS, favicon data) are invalidated. The next request that reaches the server rebuilds them; CDN copies of public pages expire within 60 seconds (`s-maxage=60`), and one stale copy may still be served for up to 5 minutes after that while the CDN refreshes (`stale-while-revalidate=300`).
 
-The flip is atomic — there's no "half-switched" intermediate state visible to visitors.
+The flip is atomic — every page rendered after it uses the new theme. Until CDN copies expire (usually within a minute or two, at most about 6 minutes for a rarely visited page), some public pages may still show the old theme.
 
 ## What carries over between themes
 

@@ -56,6 +56,35 @@ export async function issueEmailToken(args: IssueArgs): Promise<IssuedToken> {
 }
 
 /**
+ * Like `issueEmailToken`, but the row is only written when `where` (an SQL
+ * boolean expression, with `whereArgs` bound to its `?`s) holds. Check and
+ * insert are ONE `INSERT … SELECT … WHERE` statement, so the database
+ * evaluates the condition atomically with the write — on SQLite/libSQL
+ * (Turso), which serialize writes, a quota cannot be overshot by concurrent
+ * requests on separate server instances, which a read-then-insert (or an
+ * in-process lock) cannot guarantee. In Supabase (Postgres, READ COMMITTED)
+ * mode, concurrent statements can still overshoot by a few. Returns null
+ * when the condition failed and nothing was written.
+ */
+export async function issueEmailTokenIf(
+  args: IssueArgs & { where: string; whereArgs: (string | number)[] }
+): Promise<IssuedToken | null> {
+  const token = generateToken();
+  const tokenHash = hashToken(token);
+  const ttlMs = args.ttlMs ?? DEFAULT_TTL[args.purpose];
+  const expiresAt = new Date(Date.now() + ttlMs).toISOString();
+
+  const result = await args.db.execute({
+    sql: `INSERT INTO user_email_tokens (token_hash, user_id, purpose, expires_at)
+          SELECT ?, ?, ?, ? WHERE ${args.where}`,
+    args: [tokenHash, args.userId, args.purpose, expiresAt, ...args.whereArgs]
+  });
+  if (result.rowsAffected !== 1) return null;
+
+  return { token, tokenHash, expiresAt };
+}
+
+/**
  * Mint a token for the self-service email-change flow. The caller persists
  * the row in `user_email_changes` (not `user_email_tokens`) — the change
  * flow needs to bind the token to a specific (oldEmail, newEmail) pair,

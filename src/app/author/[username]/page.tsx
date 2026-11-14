@@ -19,6 +19,7 @@ import {
   profilePageJsonLd,
   renderTitleFormat,
   wrapJsonLdGraph,
+  serializeJsonLd,
 } from "@core-plugins/seo/metadata";
 
 // Public pages cache rendered HTML; proxy handles setup/IP/maintenance gates.
@@ -174,7 +175,7 @@ function AuthorJsonLd({ author, siteUrl }: { author: AuthorProfile; siteUrl: str
       type="application/ld+json"
       // JSON serialised server-side; safe to inject as innerHTML.
       dangerouslySetInnerHTML={{
-        __html: JSON.stringify(wrapJsonLdGraph(nodes)),
+        __html: serializeJsonLd(wrapJsonLdGraph(nodes)),
       }}
     />
   );

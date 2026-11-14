@@ -20,6 +20,15 @@ import {
   type Socials,
 } from "./socials";
 
+// User management is admin-only. Server actions are directly invokable
+// endpoints and the proxy's admin-route gate only covers page navigation,
+// so every action here checks the role itself (security audit 2026-11-12).
+const ADMIN_ONLY = "Only administrators can manage users";
+
+function isAdmin(session: { user?: { roles?: string[] } } | null): boolean {
+  return session?.user?.roles?.includes("admin") ?? false;
+}
+
 // ---------------------------------------------------------------------------
 // Queries
 // ---------------------------------------------------------------------------
@@ -37,6 +46,7 @@ export interface UserListItem {
 }
 
 export async function getUsers(): Promise<UserListItem[]> {
+  if (!isAdmin(await auth())) return [];
   const result = await db().execute({
     sql: `SELECT u.id, u.email, u.display_name, u.avatar_url, u.status,
                  u.last_login_at, u.created_at,
@@ -76,6 +86,8 @@ export interface UserDetail {
 export async function getUser(userId: string): Promise<UserDetail | null> {
   const session = await auth();
   if (!session?.user?.id) return null;
+  // Non-admins may read only their own record (the profile page).
+  if (!isAdmin(session) && userId !== (await resolveUserId(db(), session.user))) return null;
 
   const r = await db().execute({
     sql: `SELECT u.id, u.email, u.display_name, u.full_name, u.bio, u.avatar_url, u.status, u.meta,
@@ -125,7 +137,7 @@ export async function checkEmailAvailable(
   email: string
 ): Promise<{ available: boolean }> {
   const session = await auth();
-  if (!session?.user?.id) return { available: false };
+  if (!isAdmin(session)) return { available: false };
 
   const cleaned = email.trim().toLowerCase();
   if (!cleaned || cleaned.indexOf("@") < 1) return { available: false };
@@ -138,6 +150,8 @@ export async function checkEmailAvailable(
 }
 
 export async function getRoles(): Promise<Array<{ slug: string; label: string }>> {
+  const session = await auth();
+  if (!session?.user?.id) return [];
   const result = await db().execute({
     sql: "SELECT slug, label FROM roles ORDER BY slug",
     args: []
@@ -166,6 +180,7 @@ export async function createUser(
 ): Promise<{ ok: true; id: string; warning?: string } | { ok: false; error: string }> {
   const session = await auth();
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
+  if (!isAdmin(session)) return { ok: false, error: ADMIN_ONLY };
   const guard = await assertWriteable(db());
   if (!guard.ok) return { ok: false, error: guard.error! };
   const actorId = await resolveUserId(db(), session.user);
@@ -314,6 +329,10 @@ export async function updateUser(
   const guard = await assertWriteable(db());
   if (!guard.ok) return { ok: false, error: guard.error! };
   const actorId = await resolveUserId(db(), session.user);
+  // Non-admins may save only their own profile (the /admin/profile card).
+  const callerIsAdmin = isAdmin(session);
+  const isSelf = input.id === session.user.id || input.id === actorId;
+  if (!callerIsAdmin && !isSelf) return { ok: false, error: ADMIN_ONLY };
 
   const displayName = input.displayName.trim();
   if (!displayName) {
@@ -337,6 +356,10 @@ export async function updateUser(
   if (current.rows.length === 0) return { ok: false, error: "User not found" };
   const before = current.rows[0];
   const beforeRoles = before.roles ? String(before.roles).split(",") : [];
+  const roleChange = !(beforeRoles.length === 1 && beforeRoles[0] === input.role);
+  if (roleChange && !callerIsAdmin) {
+    return { ok: false, error: "Only administrators can change roles" };
+  }
 
   // Prevent self-demotion out of admin (mirrors self-disable guard)
   if (
@@ -376,14 +399,19 @@ export async function updateUser(
   });
 
   // Replace roles (single-role model in current UI)
-  await db().execute({
-    sql: "DELETE FROM user_roles WHERE user_id = ? AND tenant_id = 1",
-    args: [input.id]
-  });
-  await db().execute({
-    sql: "INSERT INTO user_roles (user_id, role_slug, tenant_id) VALUES (?, ?, 1)",
-    args: [input.id, input.role]
-  });
+  if (roleChange) {
+    await db().execute({
+      sql: "DELETE FROM user_roles WHERE user_id = ? AND tenant_id = 1",
+      args: [input.id]
+    });
+    await db().execute({
+      sql: "INSERT INTO user_roles (user_id, role_slug, tenant_id) VALUES (?, ?, 1)",
+      args: [input.id, input.role]
+    });
+    // Sessions re-read roles from the cached user state; drop it so the
+    // change applies on the user's next request.
+    invalidateUserCache();
+  }
 
   try {
     await auditLog(db(), {
@@ -411,21 +439,30 @@ export async function updateUser(
 //
 // changeEmailBootstrap: a *.local placeholder is being replaced with a real
 //   address for the first time. No mail goes out (the old address can't
-//   receive it) and no admin role is required (this is the seed-admin's own
-//   first-run claim flow).
+//   receive it). Admin-only (security audit 2026-11-12): the seed admin
+//   claiming its own placeholder is still an admin; everyone else changes
+//   their own email through the verified profile flow.
 // changeEmailDirect: an admin replaces any user's verified email. A notice
 //   goes to the old address; sessions are revoked so the target re-logs in
 //   with the new email. Requires the actor to hold the `admin` role.
 
 export async function changeEmailBootstrap(
   userId: string,
-  newEmail: string
+  newEmail: string,
+  /** The acting admin's own current password (step-up). */
+  actorPassword: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const session = await auth();
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
+  if (!isAdmin(session)) return { ok: false, error: ADMIN_ONLY };
   const guard = await assertWriteable(db());
   if (!guard.ok) return { ok: false, error: guard.error! };
   const actorId = await resolveUserId(db(), session.user);
+  // Moving an account's recovery email needs the actor's password, not just
+  // a session (security audit 2026-11-12).
+  if (!actorPassword || !(await validateStepUp(db(), actorId, actorPassword))) {
+    return { ok: false, error: "Your current password is incorrect" };
+  }
 
   const cleanNew = newEmail.trim().toLowerCase();
   if (!cleanNew || cleanNew.indexOf("@") < 1) {
@@ -482,7 +519,9 @@ export async function changeEmailBootstrap(
 
 export async function changeEmailDirect(
   userId: string,
-  newEmail: string
+  newEmail: string,
+  /** The acting admin's own current password (step-up). */
+  actorPassword: string
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const session = await auth();
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
@@ -492,6 +531,11 @@ export async function changeEmailDirect(
     return { ok: false, error: "Only administrators can change another user's email" };
   }
   const actorId = await resolveUserId(db(), session.user);
+  // Moving an account's recovery email needs the actor's password, not just
+  // a session (security audit 2026-11-12).
+  if (!actorPassword || !(await validateStepUp(db(), actorId, actorPassword))) {
+    return { ok: false, error: "Your current password is incorrect" };
+  }
 
   const cleanNew = newEmail.trim().toLowerCase();
   if (!cleanNew || cleanNew.indexOf("@") < 1) {
@@ -616,9 +660,13 @@ export async function requestPasswordReset(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const session = await auth();
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
+  const actorId = await resolveUserId(db(), session.user);
+  // Admins reset anyone; everyone else only their own account (the profile
+  // page's "Change password" card).
+  const isSelf = userId === session.user.id || userId === actorId;
+  if (!isAdmin(session) && !isSelf) return { ok: false, error: ADMIN_ONLY };
   const guard = await assertWriteable(db());
   if (!guard.ok) return { ok: false, error: guard.error! };
-  const actorId = await resolveUserId(db(), session.user);
 
   const userRow = await db().execute({
     sql: "SELECT email, display_name FROM users WHERE id = ? AND tenant_id = 1 AND deleted_at IS NULL LIMIT 1",
@@ -715,6 +763,9 @@ export interface UserContentSummary {
  * round-trip is bounded by the slowest single query.
  */
 export async function getUserContentSummary(userId: string): Promise<UserContentSummary> {
+  if (!isAdmin(await auth())) {
+    return { posts: 0, pages: 0, topics: 0, media: 0, galleries: 0, total: 0 };
+  }
   const [posts, pages, topics, media, galleries] = await Promise.all([
     db().execute({ sql: "SELECT COUNT(*) AS c FROM posts WHERE created_by = ? AND tenant_id = 1", args: [userId] }),
     db().execute({ sql: "SELECT COUNT(*) AS c FROM pages WHERE created_by = ? AND tenant_id = 1", args: [userId] }),
@@ -748,7 +799,7 @@ export interface ReassignCandidate {
  */
 export async function getReassignCandidates(excludeUserId: string): Promise<ReassignCandidate[]> {
   const session = await auth();
-  if (!session?.user?.id) return [];
+  if (!isAdmin(session)) return [];
 
   const r = await db().execute({
     sql: `SELECT id, display_name, email
@@ -790,6 +841,7 @@ export async function deleteUser(
 > {
   const session = await auth();
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
+  if (!isAdmin(session)) return { ok: false, error: ADMIN_ONLY };
   const guard = await assertWriteable(db());
   if (!guard.ok) return { ok: false, error: guard.error! };
   const actorId = await resolveUserId(db(), session.user);
@@ -947,6 +999,7 @@ export async function toggleUserStatus(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const session = await auth();
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
+  if (!isAdmin(session)) return { ok: false, error: ADMIN_ONLY };
   const guard = await assertWriteable(db());
   if (!guard.ok) return { ok: false, error: guard.error! };
   const actorId = await resolveUserId(db(), session.user);
@@ -961,6 +1014,8 @@ export async function toggleUserStatus(
     sql: "UPDATE users SET status = ?, updated_at = ? WHERE id = ? AND tenant_id = 1",
     args: [newStatus, now, userId]
   });
+  // A disabled user's existing sessions end on their next request.
+  invalidateUserCache();
 
   try {
     await auditLog(db(), {

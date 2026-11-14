@@ -1,12 +1,13 @@
 /**
  * Bearer auth middleware for /api/v1/* routes.
  *
- * Wraps a Next.js route handler with the full 5-step auth flow:
+ * Wraps a Next.js route handler with the full 6-step auth flow:
  *   1. Extract token from Authorization header
  *   2. Hash & lookup in api_tokens
- *   3. Check expiration
- *   4. Verify required scope(s)
- *   5. Check CIDR allowlist, set request context, rate-limit, async-update usage
+ *   3. Owner check (inside the lookup): active, not deleted, still an admin
+ *   4. Check expiration
+ *   5. Verify required scope(s)
+ *   6. Check CIDR allowlist, set request context, rate-limit, async-update usage
  *
  * Also integrates the IP guard from the security plugin.
  */
@@ -151,7 +152,10 @@ export function withBearerAuth(
       return jsonError("unauthorized", "Missing or invalid Authorization header", 401);
     }
 
-    // 2. Hash & lookup
+    // 2. Hash & lookup. `lookupActiveToken` also rejects tokens whose owner is
+    // disabled/deleted or no longer an admin (see its docblock) — the Bearer
+    // analogue of session revocation. Only admins can mint tokens, so a
+    // demoted owner's tokens stop at once and work again if the role returns.
     const hash = hashToken(plaintext);
     const token = await lookupActiveToken(db(), hash);
     if (!token) {

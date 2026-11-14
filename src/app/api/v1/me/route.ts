@@ -30,7 +30,7 @@ async function handler(req: NextRequest) {
         action: "auth.api.introspect",
         targetType: "api_token",
         targetId: String(ctx.token.id),
-        ipAddress: req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+        ipAddress: ctx.ip,
         userAgent: req.headers.get("user-agent") ?? null,
       });
     } catch {

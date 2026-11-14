@@ -8,7 +8,7 @@ import { ApiSettingsForm } from "./ApiSettingsForm";
 import { MaintenanceSettingsForm } from "./MaintenanceSettingsForm";
 import { ContentSettingsForm } from "./ContentSettingsForm";
 import type { WebsiteSettings } from "./website-actions";
-import type { SmtpSettings } from "./smtp-actions";
+import type { SmtpSettingsView } from "./smtp-actions";
 import type { ApiSettings } from "./api-actions";
 import type { MaintenanceSettings } from "./maintenance-actions";
 import type {
@@ -20,7 +20,7 @@ import type {
 
 interface Props {
   website: WebsiteSettings;
-  smtp: SmtpSettings;
+  smtp: SmtpSettingsView;
   api: ApiSettings;
   maintenance: MaintenanceSettings;
   content: ContentSettings;

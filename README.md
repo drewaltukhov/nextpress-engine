@@ -109,8 +109,9 @@ demo content. Under ten minutes to your first post.
 1. **Fork** this repo on GitHub.
 2. **Create a Turso database**: `turso db create my-site`, then grab its URL + token.
 3. **Import** the fork at [vercel.com/new](https://vercel.com/new).
-4. Set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and `AUTH_SECRET` under **Settings → Environment Variables**.
+4. Set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and `AUTH_SECRET` under **Settings → Environment Variables** — plus `NEXTPRESS_ALLOW_SETUP=1` for this first deploy only.
 5. Deploy, open `https://<your-app>.vercel.app/admin`, finish the wizard.
+6. Remove `NEXTPRESS_ALLOW_SETUP` and redeploy. In production the setup wizard and site reset stay switched off unless that flag is set.
 
 The build runs `plugins:discover` + `migrate` automatically — no manual database step.
 
@@ -123,9 +124,10 @@ in the database, encrypted where it matters.
 | Variable | Required? | What it is |
 | --- | --- | --- |
 | `AUTH_SECRET` | Yes | 32+ char random string; signs session JWTs **and** encrypts sensitive settings at rest. Generate with `openssl rand -base64 32`. |
-| `TURSO_DATABASE_URL` | In production | A `libsql://…` URL from `turso db show <name> --url`. Unset locally → falls back to `file:./.local/dev.db`. |
+| `TURSO_DATABASE_URL` | In production | A `libsql://…` URL from `turso db show <name> --url`. Unset locally → falls back to `file:./.local/dev.db`; production refuses to start without it. |
 | `TURSO_AUTH_TOKEN` | With Turso | Bearer token from `turso db tokens create <name>`. |
 | `AUTH_URL` | Optional | Public site URL. Auto-detected on Vercel; set explicitly on custom hosts. |
+| `NEXTPRESS_ALLOW_SETUP` | First production deploy only | `1` allows the setup wizard (and site reset) in production. Remove it once the wizard is done. Not needed locally. |
 
 ## 📚 Documentation
 

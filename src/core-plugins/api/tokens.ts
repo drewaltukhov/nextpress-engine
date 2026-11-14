@@ -132,17 +132,33 @@ export interface TokenLookupResult {
 }
 
 /**
- * Look up a token by its SHA-256 hash. Returns null if not found or revoked.
+ * Look up a token by its SHA-256 hash. Returns null if not found, revoked, or
+ * owned by a user who is no longer an active admin.
+ *
+ * The INNER JOIN to `users` (status = 'active', not soft-deleted) is the
+ * Bearer-path equivalent of the cookie session's freshness/revocation gate
+ * (`checkSessionFreshness`): disabling or deleting a user must cut off their
+ * API tokens on the very next request, not just their browser session.
+ *
+ * The owner must also still hold the admin role: only admins can mint tokens
+ * (My Tokens), so a demoted owner's tokens must not keep the scopes they were
+ * minted with (security audit 2026-11-12). Restoring the role restores the
+ * tokens.
  */
 export async function lookupActiveToken(
   db: DbClient,
   hash: string
 ): Promise<TokenLookupResult | null> {
   const result = await db.execute({
-    sql: `SELECT id, user_id, name, prefix, scopes, allowed_origins,
-                 rate_limit_per_minute, expires_at, revoked_at
-          FROM api_tokens
-          WHERE token_hash = ? AND tenant_id = 1 AND revoked_at IS NULL
+    sql: `SELECT t.id, t.user_id, t.name, t.prefix, t.scopes, t.allowed_origins,
+                 t.rate_limit_per_minute, t.expires_at, t.revoked_at
+          FROM api_tokens t
+          INNER JOIN users u ON u.id = t.user_id AND u.tenant_id = t.tenant_id
+          WHERE t.token_hash = ? AND t.tenant_id = 1 AND t.revoked_at IS NULL
+            AND u.status = 'active' AND u.deleted_at IS NULL
+            AND EXISTS (SELECT 1 FROM user_roles ur
+                        WHERE ur.user_id = t.user_id AND ur.tenant_id = t.tenant_id
+                          AND ur.role_slug = 'admin')
           LIMIT 1`,
     args: [hash]
   });

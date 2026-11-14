@@ -98,7 +98,12 @@ export async function getMediaSettings(): Promise<MediaSettings> {
   return readMediaSettings(db());
 }
 
+// The library listing needs a signed-in session (any staff role — authors use
+// it in the editor). Server actions are directly invokable, so an
+// unauthenticated caller must get nothing (security audit 2026-11-12).
 export async function getLibrary(page: number = 1, search: string = ""): Promise<ListMediaResult> {
+  const session = await auth();
+  if (!session?.user?.id) return { rows: [], total: 0, page, pageSize: 0 };
   return listMedia(db(), { page, search });
 }
 

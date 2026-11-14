@@ -86,6 +86,20 @@ export function breadcrumbJsonLd(items: BreadcrumbItem[]): object {
 }
 
 /**
+ * Serialize JSON-LD for a raw `<script type="application/ld+json">` body.
+ * JSON.stringify leaves "<" and U+2028/U+2029 as-is, so stored text such as
+ * "</script>" in a title or bio could close the element and run script.
+ * Escaping them keeps the JSON identical once parsed (security audit
+ * 2026-11-12). Every JSON-LD sink must use this, never bare JSON.stringify.
+ */
+export function serializeJsonLd(value: unknown): string {
+  return JSON.stringify(value)
+    .replace(/</g, "\\u003c")
+    .replace(/\u2028/g, "\\u2028")
+    .replace(/\u2029/g, "\\u2029");
+}
+
+/**
  * Wrap JSON-LD nodes in a @graph container with schema.org context.
  */
 export function wrapJsonLdGraph(nodes: object[]): object {

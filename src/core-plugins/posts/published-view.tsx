@@ -48,8 +48,7 @@ import {
   wrapJsonLdGraph,
   articleJsonLd,
   faqPageJsonLd,
-  breadcrumbJsonLd,
-} from "@core-plugins/seo/metadata";
+  breadcrumbJsonLd, serializeJsonLd } from "@core-plugins/seo/metadata";
 import {
   DEFAULT_DATE_FORMAT,
   DEFAULT_TIMEZONE,
@@ -252,7 +251,7 @@ export async function PostJsonLd(args: BuildPostJsonLdArgs): Promise<ReactNode> 
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(wrapJsonLdGraph(nodes)) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(wrapJsonLdGraph(nodes)) }}
     />
   );
 }

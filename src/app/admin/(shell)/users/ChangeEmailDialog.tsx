@@ -31,11 +31,12 @@ function BootstrapForm({ user, onClose }: BootstrapFormProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [newEmail, setNewEmail] = useState("");
+  const [actorPassword, setActorPassword] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const result = await changeEmailBootstrap(user.id, newEmail);
+      const result = await changeEmailBootstrap(user.id, newEmail, actorPassword);
       if (!result.ok) {
         toast.error(result.error);
         return;
@@ -79,6 +80,21 @@ function BootstrapForm({ user, onClose }: BootstrapFormProps) {
         />
       </div>
 
+      <div>
+        <label htmlFor="ce-actor-password" className="block text-sm font-medium text-slate-700 mb-1.5">
+          Your current password
+        </label>
+        <input
+          id="ce-actor-password"
+          type="password"
+          required
+          autoComplete="current-password"
+          value={actorPassword}
+          onChange={(e) => setActorPassword(e.target.value)}
+          className={inputCls}
+        />
+      </div>
+
       <DialogFooter>
         <button
           type="button"
@@ -108,11 +124,12 @@ function VerifiedDirectForm({ user, onClose }: VerifiedDirectFormProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [newEmail, setNewEmail] = useState("");
+  const [actorPassword, setActorPassword] = useState("");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const result = await changeEmailDirect(user.id, newEmail);
+      const result = await changeEmailDirect(user.id, newEmail, actorPassword);
       if (!result.ok) {
         toast.error(result.error);
         return;
@@ -154,6 +171,21 @@ function VerifiedDirectForm({ user, onClose }: VerifiedDirectFormProps) {
           placeholder="you@example.com"
           value={newEmail}
           onChange={(e) => setNewEmail(e.target.value)}
+          className={inputCls}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="ce-actor-password-verified" className="block text-sm font-medium text-slate-700 mb-1.5">
+          Your current password
+        </label>
+        <input
+          id="ce-actor-password-verified"
+          type="password"
+          required
+          autoComplete="current-password"
+          value={actorPassword}
+          onChange={(e) => setActorPassword(e.target.value)}
           className={inputCls}
         />
       </div>

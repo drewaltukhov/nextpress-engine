@@ -14,6 +14,10 @@ export type PostFeaturedImageProps = {
 
 interface PuckMetadataShape {
   post?: PostDetail;
+  /** Intrinsic dimensions of the post's featured image, resolved from the
+   *  media row in `renderActiveTheme`. Lets the img reserve its aspect-ratio
+   *  box so the eager LCP image doesn't shift content in (CLS). */
+  featuredImageDims?: { width: number; height: number } | null;
 }
 
 // Tailwind purge sees the literal class names, so use a lookup instead
@@ -61,6 +65,10 @@ export const PostFeaturedImage: ComponentConfig<PostFeaturedImageProps> = {
       return <></>;
     }
     const mediumUrl = toFeaturedMediumVariant(url) ?? url;
+    // Intrinsic size (resolved in renderActiveTheme) lets the browser reserve
+    // the image's box before it loads, so the LCP image doesn't shift content.
+    const dims = md.featuredImageDims;
+    const sizeAttrs = dims ? { width: dims.width, height: dims.height } : {};
     // This image sits at the top of the post — the LCP element. Preload it at
     // high priority so the browser fetches it during the initial HTML parse,
     // before it reaches this widget's markup. `ReactDOM.preload` (React 19)
@@ -77,7 +85,7 @@ export const PostFeaturedImage: ComponentConfig<PostFeaturedImageProps> = {
               so it loads eagerly with high priority and uses the ≤1280px WebP
               medium variant (falls back to the original safely). */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={mediumUrl} alt="" className="w-full object-cover" loading="eager" fetchPriority="high" />
+          <img src={mediumUrl} alt="" className="h-auto w-full object-cover" loading="eager" fetchPriority="high" {...sizeAttrs} />
         </div>
       );
     }
@@ -90,6 +98,7 @@ export const PostFeaturedImage: ComponentConfig<PostFeaturedImageProps> = {
           className="h-full w-full object-cover object-center"
           loading="eager"
           fetchPriority="high"
+          {...sizeAttrs}
         />
       </div>
     );

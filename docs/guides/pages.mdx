@@ -96,6 +96,8 @@ A page has three states:
 
 You can switch states from the **Publish** button menu in the top-right.
 
+> **Unpublishing isn't instant at the CDN.** Public pages are cached at the CDN for up to 60 seconds and may be served stale for up to 5 minutes more while it refreshes. A page that was public can therefore keep being served for up to about 6 minutes after you move it back to draft or to trash. The RSS feed and sitemap are cached longer (up to 30 minutes and 1 hour), so they can keep listing it for that long. Don't rely on unpublishing to pull something that must disappear immediately.
+
 ## Editing an existing page
 
 From **Pages → All pages**:

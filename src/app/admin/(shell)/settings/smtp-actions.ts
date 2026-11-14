@@ -17,9 +17,37 @@ export interface SmtpSettings {
   fromAddress: string;
 }
 
+/**
+ * What the settings page receives. The stored password never leaves the
+ * server; the form only needs to know whether one is on file
+ * (security audit 2026-11-12).
+ */
+export interface SmtpSettingsView {
+  host: string;
+  port: number;
+  user: string;
+  passwordConfigured: boolean;
+  fromAddress: string;
+}
+
 export type SaveResult = { ok: true } | { ok: false; error: string };
 
-export async function getSmtpSettings(): Promise<SmtpSettings> {
+// SMTP settings are admin-only: they decide where password-reset mail goes
+// and hold the mail credential. Server actions are directly invokable, so
+// each one checks the role itself.
+async function requireAdmin() {
+  const session = await auth();
+  if (!session?.user?.id) return { ok: false as const, error: "Not authenticated" };
+  if (!session.user.roles?.includes("admin")) {
+    return { ok: false as const, error: "Only administrators can change email settings" };
+  }
+  return { ok: true as const, session };
+}
+
+export async function getSmtpSettings(): Promise<SmtpSettingsView> {
+  const empty = { host: "", port: 587, user: "", passwordConfigured: false, fromAddress: "" };
+  const admin = await requireAdmin();
+  if (!admin.ok) return empty;
   const secret = process.env.AUTH_SECRET;
   const [host, port, user, password, fromAddress] = await Promise.all([
     getSetting<string>(db(), "smtp.host"),
@@ -32,22 +60,34 @@ export async function getSmtpSettings(): Promise<SmtpSettings> {
     host: host ?? "",
     port: port ?? 587,
     user: user ?? "",
-    password: password ?? "",
+    passwordConfigured: Boolean(password),
     fromAddress: fromAddress ?? "",
   };
 }
 
 export async function saveSmtpSettings(input: SmtpSettings): Promise<SaveResult> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { ok: false, error: "Not authenticated" };
-  }
+  const admin = await requireAdmin();
+  if (!admin.ok) return { ok: false, error: admin.error };
+  const session = admin.session;
   const guard = await assertWriteable(db());
   if (!guard.ok) return { ok: false, error: guard.error! };
 
   const secret = process.env.AUTH_SECRET;
   const userId = await resolveUserId(db(), session.user);
   const opts = { updatedBy: userId, secret };
+
+  if (!input.password && input.host.trim()) {
+    // A blank password keeps the stored one, so it must not be kept for a
+    // different host: the next email would log in there with it. (Clearing
+    // the host switches email off and sends the password nowhere.)
+    const [storedHost, storedPassword] = await Promise.all([
+      getSetting<string>(db(), "smtp.host"),
+      getSetting<string>(db(), "smtp.password", secret),
+    ]);
+    if (storedPassword && input.host.trim() !== (storedHost ?? "")) {
+      return { ok: false, error: "Enter the password for the new SMTP server" };
+    }
+  }
 
   try {
     await setSetting(db(), "smtp.host", input.host.trim(), opts);
@@ -80,10 +120,8 @@ export interface SmtpTestInput {
 export type SmtpTestResult = { ok: true } | { ok: false; error: string };
 
 export async function testSmtpConnection(input: SmtpTestInput): Promise<SmtpTestResult> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return { ok: false, error: "Not authenticated" };
-  }
+  const admin = await requireAdmin();
+  if (!admin.ok) return { ok: false, error: admin.error };
   const guard = await assertWriteable(db());
   if (!guard.ok) return { ok: false, error: guard.error! };
   if (!input.host.trim()) {
@@ -92,7 +130,21 @@ export async function testSmtpConnection(input: SmtpTestInput): Promise<SmtpTest
 
   let password = input.password;
   if (!password) {
-    // Test against the stored password if the form left the field blank.
+    // Test against the stored password if the form left the field blank —
+    // but only for the stored server and account, so the credential is
+    // never sent to a host it was not saved for.
+    const [storedHost, storedPort, storedUser] = await Promise.all([
+      getSetting<string>(db(), "smtp.host"),
+      getSetting<number>(db(), "smtp.port"),
+      getSetting<string>(db(), "smtp.user"),
+    ]);
+    const sameServer =
+      input.host.trim() === (storedHost ?? "") &&
+      input.port === (storedPort ?? 587) &&
+      input.user.trim() === (storedUser ?? "");
+    if (!sameServer) {
+      return { ok: false, error: "Enter the password to test a server other than the saved one" };
+    }
     const secret = process.env.AUTH_SECRET;
     password = (await getSetting<string>(db(), "smtp.password", secret)) ?? "";
   }

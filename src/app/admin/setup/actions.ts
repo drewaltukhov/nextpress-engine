@@ -1,5 +1,6 @@
 "use server";
 
+import { isSetupAllowed } from "@core/setup/status";
 import { db } from "@core/db/instance";
 import { hashPassword } from "@core-plugins/users/passwords";
 import { getSetting, setSetting } from "@core-plugins/settings/registry";
@@ -66,6 +67,7 @@ export async function applyDemoBundle(
   bytes: Uint8Array,
   provider: BackupProvider
 ): Promise<void> {
+  if (!isSetupAllowed()) throw new Error("Setup is disabled on this site");
   let entries: Record<string, Uint8Array>;
   try {
     entries = unzipSync(bytes);
@@ -116,6 +118,9 @@ export async function applyDemoBundle(
 // ---------------------------------------------------------------------------
 
 export async function completeSetup(data: SetupData): Promise<SetupResult> {
+  if (!isSetupAllowed()) {
+    return { ok: false, error: "Setup is disabled on this site" };
+  }
   // Guard: refuse if setup already done
   const done = await getSetting<boolean>(db(), "system.setup_complete");
   if (done === true) {

@@ -538,6 +538,7 @@ export function PageEditForm({
       void saveRevisionAction("page", initial.id, buildRevisionSnapshot());
       setBaseline(snapshotState());
       toast.success("Page saved");
+      if (updateResult.warning) toast.warning(updateResult.warning, { duration: 15000 });
       router.refresh();
     });
   }

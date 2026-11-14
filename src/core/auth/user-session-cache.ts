@@ -16,7 +16,8 @@
  * The global tag means one user write invalidates every user's cache —
  * acceptable because user writes are rare (a few per day).
  */
-import { unstable_cache, updateTag } from "next/cache";
+import { unstable_cache } from "next/cache";
+import { invalidateCacheTag } from "@core/cache/invalidate";
 import type { DbClient } from "@core/db/client";
 import { cacheOrFallback } from "@core/caching/with-fallback";
 
@@ -29,6 +30,10 @@ export interface AdminShellState {
   avatarUrl: string | null;
   /** Most-recent revocation timestamp (ISO string) or null. */
   revokedAt: string | null;
+  /** status = 'active' and not soft-deleted. */
+  active: boolean;
+  /** The user's current role slugs, read from user_roles. */
+  roles: string[];
 }
 
 function getRuntimeDb(): DbClient {
@@ -43,16 +48,16 @@ function getRuntimeDb(): DbClient {
  * Server Action — the throw is swallowed.
  */
 export function invalidateUserCache(): void {
-  try {
-    updateTag(USER_CACHE_TAG);
-  } catch {
-    // non-Server-Action context — caller relies on revalidate TTL
-  }
+  invalidateCacheTag(USER_CACHE_TAG);
 }
 
 async function loadAdminShellStateRaw(db: DbClient, userId: string): Promise<AdminShellState> {
   const r = await db.execute({
     sql: `SELECT u.avatar_url,
+                 u.status,
+                 u.deleted_at,
+                 (SELECT GROUP_CONCAT(ur.role_slug) FROM user_roles ur
+                   WHERE ur.user_id = u.id AND ur.tenant_id = 1) AS roles,
                  sr.revoked_at
             FROM users u
             LEFT JOIN session_revocations sr ON sr.user_id = u.id
@@ -62,20 +67,22 @@ async function loadAdminShellStateRaw(db: DbClient, userId: string): Promise<Adm
     args: [userId],
   });
   const row = r.rows[0];
-  if (!row) return { exists: false, avatarUrl: null, revokedAt: null };
+  if (!row) return { exists: false, avatarUrl: null, revokedAt: null, active: false, roles: [] };
   return {
     exists: true,
     avatarUrl: row.avatar_url != null ? String(row.avatar_url) : null,
     revokedAt: row.revoked_at != null ? String(row.revoked_at) : null,
+    active: String(row.status) === "active" && row.deleted_at == null,
+    roles: row.roles ? String(row.roles).split(",") : [],
   };
 }
 
 const loadAdminShellStateCached = unstable_cache(
   (userId: string): Promise<AdminShellState> => loadAdminShellStateRaw(getRuntimeDb(), userId),
-  ["nextpress", "user-shell-state", "v1"],
+  ["nextpress", "user-shell-state", "v2"],
   // Short revalidate window: 60s is short enough that role demotions /
   // password changes propagate within a minute even if the explicit
-  // updateTag call happens to fail (e.g., write outside a Server Action).
+  // tag invalidation can't run (e.g., a write from a CLI script).
   { tags: [USER_CACHE_TAG], revalidate: 60 },
 );
 

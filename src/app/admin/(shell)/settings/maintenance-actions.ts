@@ -38,8 +38,9 @@ export async function getMaintenanceSettings(): Promise<MaintenanceSettings> {
 }
 
 /**
- * Read the current request's IP address. Routes through `getClientIp` so
- * Vercel's unspoofable `x-vercel-forwarded-for` is preferred. Falls back to
+ * Read the current request's IP address. Routes through `getClientIp` (on
+ * Vercel only `x-vercel-forwarded-for`; self-hosted, `CLIENT_IP_HEADER` or
+ * the Cloudflare-first fallback — see @core/net/client-ip). Falls back to
  * `127.0.0.1` rather than `0.0.0.0` because callers seed the bypass list
  * from this value — `127.0.0.1` is at least useful in local dev, while a
  * `0.0.0.0` entry would never match any real request.

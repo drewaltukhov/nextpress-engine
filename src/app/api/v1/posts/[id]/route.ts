@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { withBearerAuth, getApiContext } from "@core-plugins/api/bearer";
 import { db } from "@core/db/instance";
+import { applySlugRedirects, snapshotForSlugRedirects } from "@core/content/slug-redirects";
 import { auditLog } from "@core-plugins/logging";
 import {
   getPost,
@@ -72,6 +73,12 @@ async function patchHandler(req: NextRequest) {
   if (!body || typeof body !== "object") {
     return jsonError("invalid_body", "Request body must be a JSON object", 400);
   }
+
+  // A URL change on a post that WAS published leaves a redirect (same rule as
+  // the admin editor). Snapshot before ANY write — the status change just
+  // below included — so eligibility reflects the status before this request.
+  const redirectSnapshot =
+    "slug" in body || "parent_id" in body ? await snapshotForSlugRedirects(db(), id) : null;
 
   // Status transitions go through setPostStatus so published_at gets stamped
   // exactly once. We extract the status here and route the rest through the
@@ -157,6 +164,7 @@ async function patchHandler(req: NextRequest) {
       if (err instanceof PostNotFoundError) return jsonError("not_found", err.message, 404);
       return jsonError("validation_error", err instanceof Error ? err.message : "Update failed", 400);
     }
+    if (redirectSnapshot) await applySlugRedirects(db(), id, redirectSnapshot, ctx.userId);
   }
 
   // SEO fields use a separate service fn — collect any that were provided

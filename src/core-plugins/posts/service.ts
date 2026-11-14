@@ -24,7 +24,8 @@
  * `scopeToOwnerId` to restrict the query to a single user's rows when
  * the actor only carries `posts.draft`.
  */
-import { unstable_cache, updateTag } from "next/cache";
+import { unstable_cache } from "next/cache";
+import { invalidateCacheTag } from "@core/cache/invalidate";
 import type { DbClient } from "@core/db/client";
 import { cacheOrFallback } from "@core/caching/with-fallback";
 import { normalizeSlug } from "@core/slugs/normalize";
@@ -41,15 +42,11 @@ function getRuntimeDb(): DbClient {
 /**
  * Invalidate the Next.js data cache for any cached posts-list result.
  * Call from every write path that touches posts (create / update / delete /
- * trash / restore / topics assignment). Safe to call from non-Server-Action
- * contexts — the throw is swallowed.
+ * trash / restore / topics assignment). Expires the tag immediately from a
+ * Server Action or a Route Handler (see `invalidateCacheTag`).
  */
 export function invalidatePostsCache(): void {
-  try {
-    updateTag(POSTS_CACHE_TAG);
-  } catch {
-    // non-Server-Action context — caller will rely on revalidate TTL
-  }
+  invalidateCacheTag(POSTS_CACHE_TAG);
 }
 import {
   POST_KINDS,
@@ -555,10 +552,37 @@ const getPublishedRootPostBySlugCached = unstable_cache(
   { tags: [POSTS_CACHE_TAG], revalidate: 300 },
 );
 
+/**
+ * Every published root (pillar/standalone) post slug, cached as ONE entry.
+ * The public catch-all checks a requested slug against this list before the
+ * per-slug cache, so random 404 paths can't each mint a data-cache entry
+ * (security audit 2026-11-12, nextpress:cache:unstable-cache-attacker-keyed-entries).
+ */
+async function listPublishedRootPostSlugsRaw(db: DbClient): Promise<string[]> {
+  const r = await db.execute(
+    `SELECT slug FROM posts
+      WHERE tenant_id = 1 AND parent_id IS NULL
+        AND post_kind IN ('pillar','standalone')
+        AND status = 'published' AND trashed_at IS NULL`
+  );
+  return r.rows.map((row) => String(row.slug));
+}
+
+const listPublishedRootPostSlugsCached = unstable_cache(
+  (): Promise<string[]> => listPublishedRootPostSlugsRaw(getRuntimeDb()),
+  ["nextpress", "published-root-slugs", "v1"],
+  { tags: [POSTS_CACHE_TAG], revalidate: 300 },
+);
+
 export async function getPublishedRootPostBySlug(
   db: DbClient,
   slug: string,
 ): Promise<PostDetail | null> {
+  const known = await cacheOrFallback(
+    () => listPublishedRootPostSlugsCached(),
+    () => listPublishedRootPostSlugsRaw(db),
+  );
+  if (!known.includes(slug)) return null;
   return cacheOrFallback(
     () => getPublishedRootPostBySlugCached(slug),
     () => getPublishedRootPostBySlugRaw(db, slug),

@@ -9,7 +9,7 @@ import { auditLog } from "@core-plugins/logging";
 import { getEffectivePermissions, hasPermission } from "@core-plugins/users/permissions";
 import { getSetting } from "@core-plugins/settings/registry";
 import { SCHEMA_CATALOG, SCHEMA_CATALOG_TYPES } from "@core-plugins/seo/schema-catalog";
-import { createAutoRedirect } from "@core-plugins/redirects";
+import { applySlugRedirects, snapshotForSlugRedirects } from "@core/content/slug-redirects";
 import { listTopics, type TopicListItem } from "@core-plugins/topics";
 import { SYSTEM_ROLE_ORDER, SYSTEM_ROLE_SLUGS } from "../roles/entities";
 import {
@@ -44,7 +44,8 @@ import {
   type PostRobots,
 } from "@core-plugins/posts";
 
-export type SaveResult = { ok: true; id?: number } | { ok: false; error: string };
+/** `warning`: saved, but something the editor should know (e.g. #5). */
+export type SaveResult = { ok: true; id?: number; warning?: string } | { ok: false; error: string };
 
 // ---------------------------------------------------------------------------
 // Permission matrix (same shape as pages):
@@ -537,12 +538,7 @@ export async function updatePostAction(id: number, input: UpdatePostActionInput)
   // Capture pre-update URL shape so we can auto-create a redirect if the
   // slug or parent moves. Pillars also need every spike child snapshotted,
   // because changing a pillar's slug cascades to every `/pillar/spike` URL.
-  const before = await getPost(db(), id);
-  let pillarSpikesBefore: { id: number; slug: string }[] = [];
-  if (before && before.postKind === "pillar") {
-    const spikes = await listPosts(db(), { view: "live", kind: "spike", pillarId: id });
-    pillarSpikesBefore = spikes.map((s) => ({ id: s.id, slug: s.slug }));
-  }
+  const redirectSnapshot = await snapshotForSlugRedirects(db(), id);
 
   try {
     await updatePost(db(), id, {
@@ -577,44 +573,13 @@ export async function updatePostAction(id: number, input: UpdatePostActionInput)
     });
   } catch { /* audit non-fatal */ }
 
-  // Auto-redirects on slug/permalink change. createAutoRedirect already
-  // honors the per-source admin toggle and swallows its own errors, so
-  // failures here never break the save path. Read fresh to get the
-  // post-normalize slug + post-update parent join.
-  try {
-    const after = await getPost(db(), id);
-    if (before && after) {
-      const oldUrl = postPublicUrl(before);
-      const newUrl = postPublicUrl(after);
-      if (oldUrl !== newUrl) {
-        await createAutoRedirect(db(), {
-          fromPath: oldUrl,
-          toPath: newUrl,
-          source: before.slug !== after.slug ? "slug_change" : "permalink_change",
-          createdBy: guard.actor.userId,
-        });
-      }
-      // Pillar slug change cascades to every spike URL underneath.
-      if (
-        before.postKind === "pillar"
-        && after.postKind === "pillar"
-        && before.slug !== after.slug
-      ) {
-        for (const spike of pillarSpikesBefore) {
-          await createAutoRedirect(db(), {
-            fromPath: `/${before.slug}/${spike.slug}`,
-            toPath: `/${after.slug}/${spike.slug}`,
-            source: "slug_change",
-            createdBy: guard.actor.userId,
-          });
-        }
-      }
-    }
-  } catch { /* redirect creation non-fatal */ }
+  // Auto-redirects on slug/permalink change (shared with the posts API;
+  // published content only, pillar renames cascade). Never throws.
+  const warning = await applySlugRedirects(db(), id, redirectSnapshot, guard.actor.userId);
 
   revalidatePath("/admin/posts");
   revalidatePath(`/admin/posts/${id}/edit`);
-  return { ok: true, id };
+  return warning ? { ok: true, id, warning } : { ok: true, id };
 }
 
 export interface UpdatePostSeoActionInput {
@@ -882,11 +847,3 @@ function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : "Save failed";
 }
 
-// Mirrors the public-route resolution in src/app/[slug] + [slug]/[childSlug]:
-// spikes live under their pillar's slug, everything else is top-level.
-function postPublicUrl(post: { slug: string; postKind: PostKind; parentSlug: string | null }): string {
-  if (post.postKind === "spike" && post.parentSlug) {
-    return `/${post.parentSlug}/${post.slug}`;
-  }
-  return `/${post.slug}`;
-}

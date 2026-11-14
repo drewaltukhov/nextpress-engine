@@ -1,5 +1,6 @@
 "use server";
 
+import { isSetupAllowed } from "@core/setup/status";
 import { auth } from "@core/auth";
 import { db } from "@core/db/instance";
 import { assertWriteable } from "@core/maintenance";
@@ -32,6 +33,11 @@ export async function confirmReset(input: {
   if (!session?.user?.id) return { ok: false, error: "Not authenticated" };
   if (!session.user.roles?.includes("admin")) {
     return { ok: false, error: "Only administrators can reset the site" };
+  }
+  // Reset re-opens the first-run wizard; with setup disallowed (production
+  // default) it would leave a live site with no users and no way back in.
+  if (!isSetupAllowed()) {
+    return { ok: false, error: "Site reset is disabled on this site" };
   }
 
   const guard = await assertWriteable(db());

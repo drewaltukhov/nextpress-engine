@@ -25,7 +25,15 @@ export interface UserOption {
   email: string;
 }
 
+// Log reads are admin-only, like the log writes below: they expose staff
+// emails, audit diffs and failed-login IPs (security audit 2026-11-12).
+async function isAdminSession(): Promise<boolean> {
+  const session = await auth();
+  return session?.user?.roles?.includes("admin") ?? false;
+}
+
 export async function getUsers(): Promise<UserOption[]> {
+  if (!(await isAdminSession())) return [];
   const res = await db().execute({
     sql: "SELECT id, display_name, email FROM users WHERE tenant_id = 1 ORDER BY display_name",
     args: [],
@@ -179,8 +187,7 @@ export async function getActivity(
   filters: ActivityFilters = {},
   page: number = 1
 ): Promise<ActivityPage> {
-  const session = await auth();
-  if (!session?.user?.id) return { rows: [], total: 0, page, pageSize: PAGE_SIZE };
+  if (!(await isAdminSession())) return { rows: [], total: 0, page, pageSize: PAGE_SIZE };
 
   const where = buildActivityWhere(filters);
   const offset = Math.max(0, (page - 1) * PAGE_SIZE);
@@ -282,8 +289,7 @@ export async function getFailedLogins(
   sinceFilter?: string,
   page: number = 1
 ): Promise<FailedLoginsPage> {
-  const session = await auth();
-  if (!session?.user?.id) return { rows: [], total: 0, page, pageSize: PAGE_SIZE };
+  if (!(await isAdminSession())) return { rows: [], total: 0, page, pageSize: PAGE_SIZE };
 
   const clauses: string[] = ["fl.tenant_id = 1"];
   const args: (string | number)[] = [];
@@ -349,7 +355,7 @@ export interface ActiveSession {
 
 export async function getActiveSessions(): Promise<ActiveSession[]> {
   const session = await auth();
-  if (!session?.user?.id) return [];
+  if (!session?.user?.roles?.includes("admin")) return [];
 
   // Active sessions: recent successful logins that haven't been revoked
   // We join audit_log (login events) with users and check against revocations

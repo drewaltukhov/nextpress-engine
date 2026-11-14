@@ -708,6 +708,7 @@ export function PostEditForm({
       void saveRevisionAction("post", initial.id, buildRevisionSnapshot());
       setBaseline(snapshotState());
       toast.success("Post saved");
+      if (updateResult.warning) toast.warning(updateResult.warning, { duration: 15000 });
       router.refresh();
     });
   }

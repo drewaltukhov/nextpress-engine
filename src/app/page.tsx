@@ -8,6 +8,7 @@ import {
   webSiteJsonLd,
   wrapJsonLdGraph,
   type IdentityData,
+  serializeJsonLd,
 } from "@core-plugins/seo/metadata";
 import { getPage } from "@core-plugins/pages";
 import { renderPublishedPage } from "@core-plugins/pages/published-view";
@@ -180,7 +181,7 @@ function HomePageJsonLd({ settings }: HomePageJsonLdProps) {
     <script
       type="application/ld+json"
       // JSON serialized server-side; safe to inject via dangerouslySetInnerHTML.
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(wrapJsonLdGraph(nodes)) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(wrapJsonLdGraph(nodes)) }}
     />
   );
 }

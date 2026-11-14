@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@core/db/instance";
+import { mediaSafetyHeaders } from "@core-plugins/media/safety-headers";
 import { getMediaById, getMediaMedium } from "@core-plugins/media/service";
 
 /**
@@ -57,6 +58,7 @@ export async function GET(
       "Content-Type": blob.mime,
       "Content-Length": String(blob.sizeBytes),
       "Cache-Control": "public, max-age=31536000, immutable",
+      ...mediaSafetyHeaders(blob.mime, row.filename),
     },
   });
 }

@@ -1,4 +1,5 @@
-import { unstable_cache, updateTag } from "next/cache";
+import { unstable_cache } from "next/cache";
+import { invalidateCacheTag } from "@core/cache/invalidate";
 import type { DbClient } from "@core/db/client";
 import { cacheOrFallback } from "@core/caching/with-fallback";
 
@@ -11,11 +12,7 @@ function getRuntimeDb(): DbClient {
 }
 
 export function invalidateRolesCache(): void {
-  try {
-    updateTag(ROLES_CACHE_TAG);
-  } catch {
-    // non-Server-Action context — caller relies on revalidate TTL
-  }
+  invalidateCacheTag(ROLES_CACHE_TAG);
 }
 
 async function getEffectivePermissionsRaw(

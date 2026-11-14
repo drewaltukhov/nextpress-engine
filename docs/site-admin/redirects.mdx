@@ -23,13 +23,17 @@ Create redirects through the admin UI at `/admin/redirects`:
 
 ### Auto-created redirects
 
-NextPress automatically creates 301 redirects when:
+NextPress automatically creates redirects (status from **Redirects → Settings**, 301 by default) when:
 
-- A post's slug or permalink changes (`source: permalink_change`)
+- A post's or page's slug changes (`source: slug_change`) — only if it was already published
+- A post's parent changes its permalink (`source: permalink_change`) — only if it was already published
 - A term's slug changes (`source: slug_change`)
-- A media file is renamed (`source: media_rename`)
 
-This ensures old URLs continue working after content is reorganized.
+This applies to renames in the admin editor and through the API (`PATCH /api/v1/posts/:id`).
+
+An automatic redirect never deletes or overrides a manual redirect for the same old URL. If you rename a page or post onto an address that a manual redirect already uses, the save goes through but the editor warns you: the manual redirect keeps sending visitors elsewhere until you remove it. This ensures old URLs continue working after content is reorganized.
+
+> The `media_rename` source and its setting exist for a future media-rename feature; nothing creates those redirects yet.
 
 ## Status codes
 

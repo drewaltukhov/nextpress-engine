@@ -26,6 +26,7 @@ export function ProfileEmailCard({ profile }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [newEmail, setNewEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
   const [pending, startTransition] = useTransition();
 
   function handleSubmit(e: React.FormEvent) {
@@ -36,7 +37,7 @@ export function ProfileEmailCard({ profile }: Props) {
       // Non-admins still go through the token flow so they prove control of
       // the new address before it becomes their login credential.
       if (profile.isAdmin) {
-        const result = await changeEmailDirect(profile.id, newEmail);
+        const result = await changeEmailDirect(profile.id, newEmail, currentPassword);
         if (!result.ok) {
           toast.error(result.error);
           return;
@@ -44,13 +45,14 @@ export function ProfileEmailCard({ profile }: Props) {
         const cleaned = newEmail.trim().toLowerCase();
         toast.success(`Email changed to ${cleaned} — signing you out`);
         setNewEmail("");
+        setCurrentPassword("");
         setEditing(false);
         // Session was revoked server-side; the freshness gate on the next
         // navigation will bounce to /admin/login. Refresh nudges that along.
         router.refresh();
         return;
       }
-      const result = await requestEmailChange(newEmail);
+      const result = await requestEmailChange(newEmail, currentPassword);
       if (!result.ok) {
         toast.error(result.error);
         return;
@@ -58,6 +60,7 @@ export function ProfileEmailCard({ profile }: Props) {
       const cleaned = newEmail.trim().toLowerCase();
       toast.success(`Confirmation link sent to ${cleaned}`);
       setNewEmail("");
+        setCurrentPassword("");
       setEditing(false);
       router.refresh();
     });
@@ -142,6 +145,20 @@ export function ProfileEmailCard({ profile }: Props) {
                 : "We'll send a confirmation link to the new address. Your email changes only after you click it."}
             </p>
           </div>
+          <div>
+            <label htmlFor="pe-current-password" className="block text-sm font-medium text-slate-700 mb-1.5">
+              Your current password
+            </label>
+            <input
+              id="pe-current-password"
+              type="password"
+              required
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className={inputCls}
+            />
+          </div>
           <div className="flex items-center gap-3">
             <button
               type="submit"
@@ -155,6 +172,7 @@ export function ProfileEmailCard({ profile }: Props) {
               onClick={() => {
                 setEditing(false);
                 setNewEmail("");
+        setCurrentPassword("");
               }}
               className="h-10 px-4 rounded-lg border border-slate-200 bg-white text-slate-700 font-medium text-sm transition-colors hover:bg-slate-50"
             >

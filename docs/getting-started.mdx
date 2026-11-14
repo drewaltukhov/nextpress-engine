@@ -36,8 +36,9 @@ NextPress is built to deploy as a single Next.js app on Vercel's free tier. The 
 1. **Fork** [`drewaltukhov/nextpress-engine`](https://github.com/drewaltukhov/nextpress-engine) on GitHub.
 2. **Create a Turso database** (`turso db create my-site`) and grab its URL + token.
 3. **Import the project** at [vercel.com/new](https://vercel.com/new), pointing at your fork.
-4. Under **Settings → Environment Variables**, set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and `AUTH_SECRET`.
+4. Under **Settings → Environment Variables**, set `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN`, and `AUTH_SECRET` — plus `NEXTPRESS_ALLOW_SETUP=1` for this first deploy only.
 5. Trigger a deploy. Open `https://<your-app>.vercel.app/admin` and finish the wizard.
+6. Remove `NEXTPRESS_ALLOW_SETUP` and redeploy. Production keeps the setup wizard and site reset switched off unless that flag is set.
 
 The first build runs `plugins:discover` + `migrate` automatically — no manual database step needed.
 
@@ -48,15 +49,16 @@ Only the values NextPress needs *to reach the database* and sign sessions live i
 | Variable | Required? | What it is |
 | --- | --- | --- |
 | `AUTH_SECRET` | Yes | A random 32+ character string used to sign session JWTs **and** encrypt sensitive settings (e.g. the SMTP password) at rest. Generate one with `openssl rand -base64 32`. |
-| `TURSO_DATABASE_URL` | In production | A `libsql://...` URL from `turso db show <name> --url`. Leave unset locally to fall back to `file:./.local/dev.db`. |
+| `TURSO_DATABASE_URL` | In production | A `libsql://...` URL from `turso db show <name> --url`. Leave unset locally to fall back to `file:./.local/dev.db`; production refuses to start without it. |
 | `TURSO_AUTH_TOKEN` | With Turso | Bearer token from `turso db tokens create <name>`. Not needed for the local-file fallback. |
 | `AUTH_URL` | Optional | Public URL of the site. Auto-detected on Vercel; set it explicitly if you're on a custom host. |
+| `NEXTPRESS_ALLOW_SETUP` | First production deploy only | Set to `1` to allow the setup wizard (and site reset) in production. Remove it once the wizard is done. Not needed locally. |
 
 You do **not** need to set SMTP credentials, OAuth keys, or site copy in env — every one of those is configured through the admin UI and stored in the database (encrypted where it matters).
 
 ## 2. Finish the first-run setup wizard
 
-The first time you visit `/admin` on a brand-new database, NextPress shows a **setup wizard**. The wizard is mandatory — until it's complete, every admin route bounces back to `/admin/setup` and the public site shows a "we're getting set up" placeholder. The wizard captures three things:
+The first time you visit `/admin` on a brand-new database, NextPress shows a **setup wizard** (in production only while `NEXTPRESS_ALLOW_SETUP=1` is set). The wizard is mandatory — until it's complete, every admin route and every public page redirects to `/admin/setup`. The wizard captures three things:
 
 ### Step 1 — Site identity
 

@@ -85,7 +85,7 @@ Use this when you want a different sidebar layout for one template (e.g. an auth
 
 Edits **auto-save** as you make them — there's no Save button. Drop a widget, edit its settings, switch to a different template — every change is persisted as you go.
 
-The active theme's builder edits go live on the public site immediately. The non-active theme's edits are persisted but don't affect the public site until activation.
+The active theme's builder edits go live on the public site on the next uncached render. Public pages are cached at the CDN for up to 60 seconds (and may be served stale a few minutes more while it refreshes), so allow a minute or two for the change to show publicly. The non-active theme's edits are persisted but don't affect the public site until activation.
 
 ## Reset to defaults
 

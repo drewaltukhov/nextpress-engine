@@ -32,6 +32,7 @@ export function SmtpWarning() {
       action: {
         label: "Configure",
         onClick: () => {
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- toast action runs outside the React tree; a full navigation is fine
           window.location.assign("/admin/settings?tab=smtp");
         },
       },

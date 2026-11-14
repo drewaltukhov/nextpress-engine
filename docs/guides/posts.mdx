@@ -90,7 +90,7 @@ Need a new topic? Add one under [Topics](/docs/guides/topics) — it'll appear i
 The **Publish** button is a menu:
 
 - **Save draft** — keep it private. Returns 404 to anonymous visitors.
-- **Publish now** — make it live immediately.
+- **Publish now** — make it live immediately. Pages that list it (home, topics) are CDN-cached for up to 60 seconds and may be served stale a few minutes more while the CDN refreshes, so they can take a minute or two (at most about 6 minutes) to show it. The same applies to the post's own address if someone opened it while it was still a draft — the CDN may hold that "not found" page for up to about 6 minutes.
 - **Schedule** — pick a future date/time. The post stays a draft until then; the engine flips it to published automatically.
 - **Move to trash** — soft delete (recoverable).
 
@@ -108,6 +108,8 @@ By default, the post's author is the user who created it. Editors can change the
 | **Scheduled** | 404 until publish date hits | All editors |
 | **Published** | Live at `/<slug>`; in feeds | All editors |
 | **Trash** | 404 to all; restorable | All editors |
+
+> **Unpublishing isn't instant at the CDN.** Public pages are cached at the CDN for up to 60 seconds and may be served stale for up to 5 minutes more while it refreshes. A page that was public can therefore keep being served for up to about 6 minutes after you move it back to draft or to trash. The RSS feed and sitemap are cached longer (up to 30 minutes and 1 hour), so they can keep listing it for that long. Don't rely on unpublishing to pull something that must disappear immediately.
 
 ## The post list
 

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { GET } from "@/app/admin/force-logout/route";
 
@@ -17,5 +17,18 @@ describe("GET /admin/force-logout", () => {
     const res = await GET(new NextRequest("http://localhost:3000/admin/force-logout"));
     expect(res.headers.get("location")).toBe("/admin/login?reason=expired");
     expect(res.headers.get("set-cookie")).toContain("authjs.session-token=");
+  });
+
+  // With hide-admin on, /admin/login 404s for signed-out visitors, so the
+  // cleared session must land on the active admin slug (dual review, PR #2 round 3).
+  describe("with a hidden admin path", () => {
+    afterEach(() => vi.unstubAllEnvs());
+
+    it("sends the user to the active admin slug, not the 404'd /admin/login", async () => {
+      vi.stubEnv("NEXTPRESS_ADMIN_PATH", "/team-entry");
+      const res = await GET(new NextRequest("http://localhost:3000/admin/force-logout?reason=revoked"));
+      expect(res.headers.get("location")).toBe("/team-entry");
+      expect(res.headers.get("set-cookie")).toContain("authjs.session-token=");
+    });
   });
 });

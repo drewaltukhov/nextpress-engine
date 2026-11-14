@@ -186,6 +186,7 @@ export function SetupWizard() {
         setError(res.error);
         return;
       }
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full reload so the new session cookie is picked up
       window.location.assign("/admin/login");
     });
   }

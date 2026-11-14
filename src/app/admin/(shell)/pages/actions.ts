@@ -9,7 +9,7 @@ import { auditLog } from "@core-plugins/logging";
 import { getEffectivePermissions, hasPermission } from "@core-plugins/users/permissions";
 import { getSetting } from "@core-plugins/settings/registry";
 import { SCHEMA_CATALOG, SCHEMA_CATALOG_TYPES } from "@core-plugins/seo/schema-catalog";
-import { createAutoRedirect } from "@core-plugins/redirects";
+import { createAutoRedirect, manualRedirectWarning } from "@core-plugins/redirects";
 import { SYSTEM_ROLE_ORDER, SYSTEM_ROLE_SLUGS } from "../roles/entities";
 import {
   listPages,
@@ -36,7 +36,8 @@ import {
   type PageRobots,
 } from "@core-plugins/pages";
 
-export type SaveResult = { ok: true; id?: number } | { ok: false; error: string };
+/** `warning`: saved, but something the editor should know (e.g. #5). */
+export type SaveResult = { ok: true; id?: number; warning?: string } | { ok: false; error: string };
 
 // ---------------------------------------------------------------------------
 // Permission matrix (sourced from ROLE_ENTITIES.pages):
@@ -475,11 +476,16 @@ export async function updatePageAction(id: number, input: UpdatePageActionInput)
   } catch { /* audit non-fatal */ }
 
   // Auto-redirect on slug change. createAutoRedirect honors the per-source
-  // admin toggle and swallows its own errors.
+  // admin toggle and logs its own errors.
+  let warning: string | null = null;
   try {
-    if (before) {
-      const after = await getPage(db(), id);
-      if (after && before.slug !== after.slug) {
+    const after = await getPage(db(), id);
+    if (before && after && before.slug !== after.slug) {
+      // A manual redirect from the new address hides the page (#5).
+      warning = await manualRedirectWarning(db(), `/${after.slug}`);
+      // Only a URL that was public needs preserving; renaming a draft must not
+      // touch the site-wide redirect table (security audit 2026-11-12).
+      if (before.status === "published") {
         await createAutoRedirect(db(), {
           fromPath: `/${before.slug}`,
           toPath: `/${after.slug}`,
@@ -492,7 +498,7 @@ export async function updatePageAction(id: number, input: UpdatePageActionInput)
 
   revalidatePath("/admin/pages");
   revalidatePath(`/admin/pages/${id}/edit`);
-  return { ok: true, id };
+  return warning ? { ok: true, id, warning } : { ok: true, id };
 }
 
 export interface UpdatePageSeoActionInput {

@@ -68,6 +68,7 @@ export function RestoreCard() {
 
       toast.success("Site restored successfully. Please sign in again.");
       // Force full page reload to clear all client state
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- full reload clears all client state after a restore
       window.location.assign("/admin/login?reason=restored");
     });
   }

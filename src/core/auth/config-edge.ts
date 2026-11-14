@@ -7,7 +7,7 @@
 import type { NextAuthConfig } from "next-auth";
 
 // JWT signature stays valid for up to a year — the actual session lifetime
-// is enforced softly in the admin shell layout against
+// is enforced on every session read (jwt callback in ./config.ts) against
 // security.session_max_age_days. Setting maxAge here just gives the soft
 // gate enough headroom (the form caps the setting at 365).
 const ONE_YEAR_SECONDS = 365 * 24 * 60 * 60;
@@ -34,7 +34,8 @@ export const authConfigEdge = {
           roles: Array.isArray(token.roles) ? (token.roles as string[]) : [],
           emailVerifiedAt: (token.emailVerifiedAt as string | null) ?? null,
           status: String(token.status ?? ""),
-          iat: typeof token.iat === "number" ? token.iat : null
+          // The app-set login time, not Auth.js's refreshable iat.
+          iat: typeof token.authTime === "number" ? token.authTime : null
         } as unknown as typeof session.user;
       }
       return session;

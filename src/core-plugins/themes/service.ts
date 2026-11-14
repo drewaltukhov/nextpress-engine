@@ -13,7 +13,8 @@
  * name). Each theme's own migration seeds defaults; the builder
  * UPDATEs in place.
  */
-import { unstable_cache, updateTag } from "next/cache";
+import { unstable_cache } from "next/cache";
+import { invalidateCacheTag } from "@core/cache/invalidate";
 import type { DbClient } from "@core/db/client";
 import { cacheOrFallback } from "@core/caching/with-fallback";
 import { discoveredPlugins } from "@generated/plugins";
@@ -180,11 +181,7 @@ export function invalidateThemeDataCache(themeSlug?: string): void {
     (globalThis as unknown as Record<string, Record<string, number> | undefined>)[THEME_DATA_BULK_AT_KEY] = {};
     (globalThis as unknown as Record<string, Record<string, Promise<Map<string, ThemeDataValue>>> | undefined>)[THEME_DATA_INFLIGHT_KEY] = {};
   }
-  try {
-    updateTag("nextpress:theme");
-  } catch {
-    // non-Server-Action context — in-process clear is enough
-  }
+  invalidateCacheTag("nextpress:theme");
 }
 
 async function listThemeDataRaw(
@@ -259,7 +256,7 @@ export async function listThemeData(
 ): Promise<ThemeDataValue[]> {
   // Routes through the same cache the public site uses. Theme writes
   // (`setThemeData`, `createCustomTemplate`, etc.) call
-  // `invalidateThemeDataCache(slug)` → `updateTag('nextpress:theme')`,
+  // `invalidateThemeDataCache(slug)` → `invalidateCacheTag('nextpress:theme')`,
   // so reads from the builder land on fresh data after every save.
   return cacheOrFallback(
     () => loadThemeDataCached(themeSlug),

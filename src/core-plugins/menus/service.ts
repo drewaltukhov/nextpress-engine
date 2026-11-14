@@ -15,7 +15,8 @@
  * Position is dense + 0-based per (menu_id, parent_id) sibling group.
  * Move operations reflow positions in a single transaction.
  */
-import { unstable_cache, updateTag } from "next/cache";
+import { unstable_cache } from "next/cache";
+import { invalidateCacheTag } from "@core/cache/invalidate";
 import type { DbClient } from "@core/db/client";
 import { cacheOrFallback } from "@core/caching/with-fallback";
 import { normalizeSlug } from "@core/slugs/normalize";
@@ -160,11 +161,7 @@ function setMenuCacheInflight(p: Promise<void> | null): void {
 
 export function invalidateMenusCache(): void {
   setMenuCache(null);
-  try {
-    updateTag(MENUS_CACHE_TAG);
-  } catch {
-    // non-Server-Action context — in-process clear is enough
-  }
+  invalidateCacheTag(MENUS_CACHE_TAG);
 }
 
 interface MenuRowsCachePayload {

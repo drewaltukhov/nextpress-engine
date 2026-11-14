@@ -7,7 +7,8 @@
  *
  * Autoloaded settings are cached in memory at boot via `loadAutoloadCache()`.
  */
-import { unstable_cache, updateTag } from "next/cache";
+import { unstable_cache } from "next/cache";
+import { invalidateCacheTag } from "@core/cache/invalidate";
 import type { DbClient } from "@core/db/client";
 import { cacheOrFallback } from "@core/caching/with-fallback";
 import type { ZodSchema } from "zod";
@@ -108,17 +109,13 @@ function setBulkInflight(p: Promise<void> | null): void {
  * Invalidate both the in-process Map and the Next.js data cache for settings.
  * Called by setSetting / deleteSetting / boot-time autoload-cache reset.
  *
- * `updateTag` is the Next 16 "purge tag" API — only valid inside a Server
- * Action, so we swallow throws from boot/test/script callers (the in-process
- * clear above is enough for those contexts).
+ * `invalidateCacheTag` expires the tag from a Server Action or a Route
+ * Handler; boot/test/script callers have no request, so the in-process clear
+ * above is all that applies there.
  */
 export function invalidateSettingsBulkCache(): void {
   setBulkCache(null);
-  try {
-    updateTag(SETTINGS_CACHE_TAG);
-  } catch {
-    // non-Server-Action context — in-process clear is enough
-  }
+  invalidateCacheTag(SETTINGS_CACHE_TAG);
 }
 
 const loadAllSettingsCached = unstable_cache(

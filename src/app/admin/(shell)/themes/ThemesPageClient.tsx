@@ -26,7 +26,7 @@ export function ThemesPageClient({ initial }: Props) {
       const ok = await confirm({
         title: `Activate "${theme.name}"?`,
         description: active
-          ? `This deactivates "${active.name}" and switches the public site to "${theme.name}". The change takes effect on the next request.`
+          ? `This deactivates "${active.name}" and switches the public site to "${theme.name}". Public pages pick it up within a minute or two (they are CDN-cached).`
           : `This switches the public site away from the default fallback shell to use the "${theme.name}" theme.`,
         confirmLabel: "Activate",
       });
@@ -74,7 +74,7 @@ export function ThemesPageClient({ initial }: Props) {
         <div>
           <h1 className="font-display text-4xl tracking-tight text-brand-navy">Themes</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Themes control how your public site looks. Pick any theme below &mdash; the change goes live instantly.
+            Themes control how your public site looks. Pick any theme below &mdash; public pages pick up the change within a minute or two (they are CDN-cached).
           </p>
         </div>
         {active ? (

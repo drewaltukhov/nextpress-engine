@@ -1,6 +1,6 @@
 import { forbidden } from "next/navigation";
 import { db } from "@core/db/instance";
-import { getClientIp } from "@core/net/client-ip";
+import { getClientCountry, getClientIp } from "@core/net/client-ip";
 import { checkIpAccess, type IpAccessResult } from "@core-plugins/security/ip-access";
 
 /**
@@ -15,10 +15,9 @@ import { checkIpAccess, type IpAccessResult } from "@core-plugins/security/ip-ac
 export async function checkPublicAccessForRequest(h: Headers): Promise<IpAccessResult> {
   try {
     const ip = getClientIp(h);
-    // Vercel sets `x-vercel-ip-country` at the edge; pass it as a hint so
-    // checkIpAccess skips the (now-null) geo lookup. Self-hosted deploys
-    // without this header get null country, which fails-open by design.
-    const countryHint = h.get("x-vercel-ip-country");
+    // Platform edge country header (see getClientCountry). No country → the
+    // country filter fails open by design.
+    const countryHint = getClientCountry(h);
     return await checkIpAccess(db(), ip, new Date(), { countryHint });
   } catch {
     return { allowed: true, reason: "allowed_ip" };

@@ -3,6 +3,8 @@ import Credentials from "next-auth/providers/credentials";
 import { authenticateWithCredentials, recordSuccessfulLogin } from "./services";
 import { authConfigEdge } from "./config-edge";
 import { getClientIp } from "@core/net/client-ip";
+import { db } from "@core/db/instance";
+import { checkSessionFreshness } from "./freshness";
 
 export const authConfig: NextAuthConfig = {
   ...authConfigEdge,
@@ -59,7 +61,23 @@ export const authConfig: NextAuthConfig = {
         token.roles = u.roles;
         token.emailVerifiedAt = u.emailVerifiedAt;
         token.status = u.status;
+        // Immutable login time. Auth.js may re-stamp `iat` whenever it
+        // re-encodes the cookie, so revocation and max-age must not use it.
+        token.authTime = Math.floor(Date.now() / 1000);
+        return token;
       }
+      // Every later session read re-validates against the database, so a
+      // revoked, expired, disabled, deleted or demoted session is refused by
+      // every server action and route, not only the admin shell layout.
+      // Returning null ends the session. Tokens minted before authTime
+      // existed fail here once and must sign in again.
+      if (!token.sub) return null;
+      const fresh = await checkSessionFreshness(db(), {
+        userId: token.sub,
+        iat: typeof token.authTime === "number" ? token.authTime : null,
+      });
+      if (!fresh.ok) return null;
+      if (fresh.roles) token.roles = fresh.roles;
       return token;
     }
   }

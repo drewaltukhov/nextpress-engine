@@ -5,7 +5,8 @@
  * Plugin enabled/disabled state changes only via `togglePlugin` in the
  * plugins admin action, which invalidates the cache on every toggle.
  */
-import { unstable_cache, updateTag } from "next/cache";
+import { unstable_cache } from "next/cache";
+import { invalidateCacheTag } from "@core/cache/invalidate";
 import type { DbClient } from "@core/db/client";
 import { cacheOrFallback } from "@core/caching/with-fallback";
 
@@ -18,11 +19,7 @@ function getRuntimeDb(): DbClient {
 }
 
 export function invalidateEnabledPluginsCache(): void {
-  try {
-    updateTag(PLUGINS_CACHE_TAG);
-  } catch {
-    // non-Server-Action context — caller relies on revalidate TTL
-  }
+  invalidateCacheTag(PLUGINS_CACHE_TAG);
 }
 
 async function loadEnabledPluginSlugsRaw(db: DbClient): Promise<string[]> {

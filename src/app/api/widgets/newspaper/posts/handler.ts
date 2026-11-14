@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@core/db/instance";
-import { listPosts, type PostListItem } from "@core-plugins/posts/service";
+import { listPillars, listPosts, type PostListItem } from "@core-plugins/posts/service";
 import { getTopicBySlug } from "@core-plugins/topics";
 import { parseNewspaperQuery } from "./parse-query";
 import type { NewspaperPost } from "@core-plugins/site-widgets/newspaper/types";
@@ -71,7 +71,14 @@ export async function handleNewspaperPostsRequest(url: URL): Promise<Response> {
 
   if (q.kind === "single") {
     if (q.type === "pillar") {
-      pillarIds = [Number.parseInt(q.key, 10)];
+      // Same rule as the multi-pillar path below: only a real pillar id may
+      // reach the cached list query (security audit 2026-11-12).
+      const id = Number.parseInt(q.key, 10);
+      const real = new Set((await listPillars(db())).map((p) => p.id));
+      if (!real.has(id)) {
+        return NextResponse.json({ posts: [] }, { headers: { "Cache-Control": "no-store" } });
+      }
+      pillarIds = [id];
     } else {
       const topic = await getTopicBySlug(db(), q.key);
       if (!topic) {
@@ -87,7 +94,17 @@ export async function handleNewspaperPostsRequest(url: URL): Promise<Response> {
       // `kind: "spike"` filter is still applied below so the feed
       // remains spike-only (matches what the SSR fetcher does).
       if (q.keys.length > 0) {
-        pillarIds = q.keys.map((k) => Number.parseInt(k, 10));
+        // Keep only ids of real pillars (deduped, sorted) before they reach
+        // the cached list query, so made-up ids can't mint cache entries
+        // (security audit 2026-11-12). A deleted pillar is dropped rather
+        // than 404'd so a published widget keeps rendering.
+        const real = new Set((await listPillars(db())).map((p) => p.id));
+        pillarIds = [...new Set(q.keys.map((k) => Number.parseInt(k, 10)))]
+          .filter((id) => real.has(id))
+          .sort((a, b) => a - b);
+        if (pillarIds.length === 0) {
+          return NextResponse.json({ posts: [] }, { headers: { "Cache-Control": "no-store" } });
+        }
       }
     } else {
       // Empty keys = "all topic-tagged posts" — leave topicIds

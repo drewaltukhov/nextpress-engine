@@ -5,11 +5,11 @@ import { toast } from "sonner";
 import {
   saveSmtpSettings,
   testSmtpConnection,
-  type SmtpSettings,
+  type SmtpSettingsView,
 } from "./smtp-actions";
 
 interface Props {
-  initial: SmtpSettings;
+  initial: SmtpSettingsView;
 }
 
 const inputCls =
@@ -24,7 +24,7 @@ export function SmtpSettingsForm({ initial }: Props) {
   const [password, setPassword] = useState("");
   const [fromAddress, setFromAddress] = useState(initial.fromAddress);
   const [pending, startTransition] = useTransition();
-  const passwordOnFile = initial.password.length > 0;
+  const passwordOnFile = initial.passwordConfigured;
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();

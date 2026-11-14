@@ -92,7 +92,7 @@ export function ProfileDetailsCard({ user, roles }: Props) {
             <Select
               value={role}
               onValueChange={(v) => setRole(v ?? "")}
-              disabled={isSelfAdmin}
+              disabled
             >
               <SelectTrigger id="profile-role">
                 <SelectValue placeholder="Pick a role">
@@ -109,11 +109,11 @@ export function ProfileDetailsCard({ user, roles }: Props) {
                 ))}
               </SelectContent>
             </Select>
-            {isSelfAdmin && (
-              <p className="mt-2 text-sm text-slate-400">
-                You can&apos;t change your own admin role — guards against accidental lockout.
-              </p>
-            )}
+            <p className="mt-2 text-sm text-slate-400">
+              {isSelfAdmin
+                ? "You can't change your own admin role — guards against accidental lockout."
+                : "Only an administrator can change your role."}
+            </p>
           </div>
         </div>
 

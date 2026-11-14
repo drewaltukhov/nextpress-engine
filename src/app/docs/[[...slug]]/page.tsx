@@ -9,7 +9,7 @@ import { notFound } from "next/navigation";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { db } from "@core/db/instance";
 import { resolveSiteUrl } from "@core/site-url";
-import { breadcrumbJsonLd, wrapJsonLdGraph } from "@core-plugins/seo/metadata";
+import { breadcrumbJsonLd, serializeJsonLd, wrapJsonLdGraph } from "@core-plugins/seo/metadata";
 
 export default async function Page(props: {
   params: Promise<{ slug?: string[] }>;
@@ -50,7 +50,7 @@ export default async function Page(props: {
       {jsonLdNodes.length > 0 && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(wrapJsonLdGraph(jsonLdNodes)) }}
+          dangerouslySetInnerHTML={{ __html: serializeJsonLd(wrapJsonLdGraph(jsonLdNodes)) }}
         />
       )}
       <DocsPage toc={page.data.toc}>

@@ -8,7 +8,7 @@ NextPress ships three sibling features under **Admin → System**:
 | Page | What it does |
 |------|-------------|
 | `/admin/backup` | Create a `.npbackup` archive of every database table, plus a separate ZIP of every uploaded media file. Restore from a backup file. |
-| `/admin/reset` | Wipe the site back to first-run state, password-confirmed. |
+| `/admin/reset` | Wipe the site back to first-run state, password-confirmed. Off in production unless `NEXTPRESS_ALLOW_SETUP=1` (see Reset below). |
 
 All three are admin-only and re-confirm the user's password via step-up auth before doing anything destructive.
 
@@ -50,7 +50,9 @@ Restoring across major engine versions may surface schema differences. The manif
 
 ## Reset
 
-`/admin/reset` is a destructive button. The use case is iterating on a Vercel preview deployment without shell access — a one-click way to put the site back into the setup-wizard state.
+`/admin/reset` is a destructive button: a one-click way to put the site back into the setup-wizard state, for local development and throwaway test deployments.
+
+> **Off in production.** When `NODE_ENV=production` (every production server, including every Vercel deployment and preview) reset and the setup wizard are disabled — the reset action refuses with "Site reset is disabled on this site" — unless the deployment sets `NEXTPRESS_ALLOW_SETUP=1`. Set it only for the deploy that bootstraps a new site, then remove it.
 
 **Three layers of guard before anything happens:**
 

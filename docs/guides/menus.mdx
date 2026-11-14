@@ -86,7 +86,7 @@ Drag and drop. Order is saved automatically — no "Save" click required between
 
 ## Saving and publishing
 
-Menus auto-save on every change. There's no draft vs. published state — every edit goes live immediately. That's deliberate: menus are structural, not editorial, and the simpler model is less footgun-prone.
+Menus auto-save on every change. There's no draft vs. published state — every edit goes live on the next uncached render. Public pages are cached at the CDN for up to 60 seconds (and may be served stale a few minutes more while it refreshes), so allow a minute or two for the change to show publicly. That's deliberate: menus are structural, not editorial, and the simpler model is less footgun-prone.
 
 If you need to stage menu changes, build a parallel menu (e.g. `main-nav-staging`) and switch the theme's Nav Menu widget to point at it.
 
