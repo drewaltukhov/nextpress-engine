@@ -193,9 +193,16 @@ async function handlePublicContent(req: NextRequest): Promise<NextResponse> {
   // stale-while-revalidate. That TTL is also how long an admin edit can
   // take to show publicly (revalidatePath can't purge the CDN). Skip query
   // strings (pagination, previews) — those vary per request.
+  // On Vercel, Next overwrites a proxy-set Cache-Control on dynamically
+  // rendered pages with `private, no-store` (verified live: x-vercel-cache
+  // stayed MISS), so the CDN directive also goes in CDN-Cache-Control,
+  // which Next leaves alone and Vercel's CDN (and Cloudflare) honour ahead
+  // of Cache-Control. Cache-Control stays for `next start` behind other CDNs.
   const res = NextResponse.next();
   if (!req.nextUrl.search && isCdnCacheablePage(pathname)) {
-    res.headers.set("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
+    const cdnPolicy = "public, s-maxage=60, stale-while-revalidate=300";
+    res.headers.set("Cache-Control", cdnPolicy);
+    res.headers.set("CDN-Cache-Control", cdnPolicy);
   }
   return res;
 }
